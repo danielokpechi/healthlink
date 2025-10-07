@@ -1,0 +1,373 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Header from '../../../components/feature/Header';
+import Footer from '../../../components/feature/Footer';
+import Button from '../../../components/base/Button';
+import Card from '../../../components/base/Card';
+import Badge from '../../../components/base/Badge';
+
+export default function DonorDashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const [donationHistory] = useState([
+    {
+      id: 1,
+      date: '2024-01-10',
+      type: 'Blood Donation',
+      bloodType: 'O+',
+      quantity: '1 pint',
+      location: 'Lagos University Teaching Hospital',
+      status: 'completed',
+      impact: '3 lives saved'
+    },
+    {
+      id: 2,
+      date: '2023-12-15',
+      type: 'Plasma Donation',
+      bloodType: 'O+',
+      quantity: '500ml',
+      location: 'National Hospital Abuja',
+      status: 'completed',
+      impact: '2 lives saved'
+    },
+    {
+      id: 3,
+      date: '2023-11-20',
+      type: 'Blood Donation',
+      bloodType: 'O+',
+      quantity: '1 pint',
+      location: 'University College Hospital',
+      status: 'completed',
+      impact: '3 lives saved'
+    }
+  ]);
+
+  const [urgentRequests] = useState([
+    {
+      id: 1,
+      bloodType: 'O+',
+      quantity: '2 pints',
+      urgency: 'emergency',
+      location: 'Lagos University Teaching Hospital',
+      distance: '2.5 km',
+      timePosted: '30 minutes ago',
+      description: 'Emergency surgery patient needs immediate blood transfusion'
+    },
+    {
+      id: 2,
+      bloodType: 'A+',
+      quantity: '1 pint',
+      urgency: 'urgent',
+      location: 'National Hospital Abuja',
+      distance: '5.2 km',
+      timePosted: '2 hours ago',
+      description: 'Cancer patient requires blood for treatment'
+    },
+    {
+      id: 3,
+      bloodType: 'B+',
+      quantity: '3 pints',
+      urgency: 'routine',
+      location: 'Federal Medical Centre',
+      distance: '8.1 km',
+      timePosted: '1 day ago',
+      description: 'Scheduled surgery preparation'
+    }
+  ]);
+
+  const [stats] = useState({
+    totalDonations: 8,
+    livesSaved: 24,
+    nextEligibleDate: '2024-03-15',
+    donorRank: 'Gold Donor',
+    totalVolume: '8 pints'
+  });
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const currentUser = localStorage.getItem('bloodlink_user');
+      if (!currentUser) {
+        navigate('/auth');
+        return;
+      }
+      
+      const userData = JSON.parse(currentUser);
+      if (userData.type !== 'donor') {
+        navigate('/');
+        return;
+      }
+      
+      setUser(userData);
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case 'emergency': return { variant: 'danger' as const, text: 'EMERGENCY', icon: 'ri-alarm-warning-line' };
+      case 'urgent': return { variant: 'warning' as const, text: 'URGENT', icon: 'ri-time-line' };
+      case 'routine': return { variant: 'success' as const, text: 'ROUTINE', icon: 'ri-calendar-line' };
+      default: return { variant: 'default' as const, text: urgency.toUpperCase(), icon: 'ri-information-line' };
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <i className="ri-heart-pulse-fill text-white text-2xl"></i>
+          </div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50/30">
+      <Header />
+      
+      {/* Dashboard Header */}
+      <section className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white pt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">
+                Welcome back, {user.firstName}!
+              </h1>
+              <p className="text-pink-100 text-lg">
+                Thank you for being a life-saving donor. Your contributions make a real difference.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <Link to="/donate">
+                <Button className="bg-white text-pink-600 hover:bg-gray-50">
+                  <i className="ri-gift-line mr-2"></i>
+                  Donate Now
+                </Button>
+              </Link>
+              <Link to="/profile">
+                <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30">
+                  <i className="ri-user-line mr-2"></i>
+                  Edit Profile
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Overview */}
+      <section className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
+                  <i className="ri-gift-line text-white text-xl"></i>
+                </div>
+                <div>
+                  <p className="text-pink-100 text-sm">Total Donations</p>
+                  <p className="text-2xl font-bold">{stats.totalDonations}</p>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
+                  <i className="ri-heart-pulse-line text-white text-xl"></i>
+                </div>
+                <div>
+                  <p className="text-green-100 text-sm">Lives Saved</p>
+                  <p className="text-2xl font-bold">{stats.livesSaved}</p>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
+                  <i className="ri-drop-line text-white text-xl"></i>
+                </div>
+                <div>
+                  <p className="text-blue-100 text-sm">Total Volume</p>
+                  <p className="text-2xl font-bold">{stats.totalVolume}</p>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
+                  <i className="ri-award-line text-white text-xl"></i>
+                </div>
+                <div>
+                  <p className="text-purple-100 text-sm">Donor Status</p>
+                  <p className="text-lg font-bold">{stats.donorRank}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Urgent Blood Requests */}
+            <Card>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Urgent Blood Requests Near You</h3>
+                <Link to="/request">
+                  <Button size="sm" variant="outline">
+                    View All
+                  </Button>
+                </Link>
+              </div>
+              
+              <div className="space-y-4">
+                {urgentRequests.map((request) => {
+                  const urgencyBadge = getUrgencyBadge(request.urgency);
+                  return (
+                    <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                            <i className="ri-drop-line text-pink-500"></i>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{request.bloodType} Blood Needed</h4>
+                            <p className="text-sm text-gray-600">{request.quantity} required</p>
+                          </div>
+                        </div>
+                        <Badge variant={urgencyBadge.variant} className="text-xs">
+                          <i className={`${urgencyBadge.icon} mr-1`}></i>
+                          {urgencyBadge.text}
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-3">{request.description}</p>
+                      
+                      <div className="flex justify-between items-center text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <i className="ri-map-pin-line mr-1"></i>
+                          {request.location} • {request.distance}
+                        </div>
+                        <div className="flex items-center">
+                          <i className="ri-time-line mr-1"></i>
+                          {request.timePosted}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 flex space-x-2">
+                        <Button size="sm" className="flex-1">
+                          <i className="ri-heart-line mr-2"></i>
+                          Respond
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <i className="ri-share-line mr-2"></i>
+                          Share
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Donation History & Next Eligible */}
+            <div className="space-y-6">
+              {/* Next Eligible Date */}
+              <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                    <i className="ri-calendar-check-line text-white text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-green-800">Next Donation Eligible</h4>
+                    <p className="text-green-700 font-medium">{stats.nextEligibleDate}</p>
+                    <p className="text-sm text-green-600">You can donate again in 45 days</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white">
+                    <i className="ri-calendar-line mr-2"></i>
+                    Set Reminder
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Recent Donations */}
+              <Card>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Recent Donations</h3>
+                  <Link to="/profile">
+                    <Button size="sm" variant="outline">
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+                
+                <div className="space-y-4">
+                  {donationHistory.slice(0, 3).map((donation) => (
+                    <div key={donation.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                          <i className="ri-drop-line text-pink-500 text-sm"></i>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">{donation.type}</h4>
+                          <p className="text-sm text-gray-600">{donation.bloodType} • {donation.quantity}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{donation.date}</p>
+                        <p className="text-xs text-green-600">{donation.impact}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8">
+            <Card>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link to="/donate">
+                  <Button className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                    <i className="ri-gift-line mr-2"></i>
+                    Schedule Donation
+                  </Button>
+                </Link>
+                <Link to="/blood-banks">
+                  <Button variant="outline" className="w-full">
+                    <i className="ri-hospital-line mr-2"></i>
+                    Find Blood Banks
+                  </Button>
+                </Link>
+                <Link to="/request">
+                  <Button variant="outline" className="w-full">
+                    <i className="ri-search-line mr-2"></i>
+                    View All Requests
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
