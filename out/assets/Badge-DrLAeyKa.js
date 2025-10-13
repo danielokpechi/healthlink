@@ -1,0 +1,2 @@
+import{j as x}from"./index-BKgZRCvf.js";function i({children:e,variant:t="default",size:n="sm"}){const s={default:"bg-gray-100 text-gray-800",success:"bg-green-100 text-green-800",warning:"bg-yellow-100 text-yellow-800",danger:"bg-red-100 text-red-800",pink:"bg-pink-100 text-pink-800"},r={sm:"px-2 py-1 text-xs",md:"px-3 py-1.5 text-sm"};return x.jsx("span",{className:`inline-flex items-center rounded-full font-medium ${s[t]} ${r[n]}`,children:e})}export{i as B};
+//# sourceMappingURL=Badge-DrLAeyKa.js.map
