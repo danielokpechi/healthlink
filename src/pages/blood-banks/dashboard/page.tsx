@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
@@ -9,8 +10,8 @@ import Badge from '../../../components/base/Badge';
 
 export default function BloodBankDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [bloodInventory, setBloodInventory] = useState([
@@ -82,24 +83,19 @@ export default function BloodBankDashboard() {
   ]);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const currentUser = localStorage.getItem('bloodlink_user');
-      if (!currentUser) {
-        navigate('/auth');
-        return;
-      }
-      
-      const userData = JSON.parse(currentUser);
-      if (userData.type !== 'bloodbank') {
-        navigate('/');
-        return;
-      }
-      
-      setUser(userData);
-      setIsLoading(false);
-    };
-
-    checkAuth();
+    if (!user) {
+      // If auth context isn't populated yet, wait briefly
+      setTimeout(() => {
+        const current = window.localStorage.getItem('bloodlink_user');
+        if (!current) navigate('/auth');
+      }, 50);
+      return;
+    }
+    if ((user.type || user.userType || '').toString().toLowerCase() !== 'bloodbank') {
+      navigate('/');
+      return;
+    }
+    setIsLoading(false);
   }, [navigate]);
 
   const updateQuantity = (type: string, newQuantity: number) => {
@@ -126,7 +122,9 @@ export default function BloodBankDashboard() {
     );
   };
 
-  const getStockLevel = (quantity: number) => {
+  const getStockLevel = (
+    quantity: number
+  ): { level: 'out' | 'critical' | 'low' | 'good'; color: 'danger' | 'warning' | 'success' | 'default' | 'pink' } => {
     if (quantity === 0) return { level: 'out', color: 'danger' };
     if (quantity < 5) return { level: 'critical', color: 'danger' };
     if (quantity < 10) return { level: 'low', color: 'warning' };
@@ -289,7 +287,7 @@ export default function BloodBankDashboard() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-3 mb-2">
                               <h4 className="font-semibold text-gray-900">{request.patientName}</h4>
-                              <Badge variant={urgencyBadge.variant} className="text-xs">
+                              <Badge variant={urgencyBadge.variant}>
                                 {urgencyBadge.text}
                               </Badge>
                             </div>

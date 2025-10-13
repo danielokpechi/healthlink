@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
@@ -7,8 +8,8 @@ import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
 
 export default function DonorDashboard() {
-  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [donationHistory] = useState([
@@ -86,24 +87,18 @@ export default function DonorDashboard() {
   });
 
   useEffect(() => {
-    const checkAuth = () => {
-      const currentUser = localStorage.getItem('bloodlink_user');
-      if (!currentUser) {
-        navigate('/auth');
-        return;
-      }
-      
-      const userData = JSON.parse(currentUser);
-      if (userData.type !== 'donor') {
-        navigate('/');
-        return;
-      }
-      
-      setUser(userData);
-      setIsLoading(false);
-    };
-
-    checkAuth();
+    if (!user) {
+      setTimeout(() => {
+        const current = window.localStorage.getItem('bloodlink_user');
+        if (!current) navigate('/auth');
+      }, 50);
+      return;
+    }
+    if ((user.type || user.userType || '').toString().toLowerCase() !== 'donor') {
+      navigate('/');
+      return;
+    }
+    setIsLoading(false);
   }, [navigate]);
 
   const getUrgencyBadge = (urgency: string) => {
@@ -142,7 +137,7 @@ export default function DonorDashboard() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold mb-2">
-                Welcome back, {user.firstName}!
+                 Welcome back {((user.fullName || user.firstName || user.displayName || '').toString()).replace(/\b\w/g, (c: string) => c.toUpperCase())} !
               </h1>
               <p className="text-pink-100 text-lg">
                 Thank you for being a life-saving donor. Your contributions make a real difference.
@@ -247,7 +242,7 @@ export default function DonorDashboard() {
                             <p className="text-sm text-gray-600">{request.quantity} required</p>
                           </div>
                         </div>
-                        <Badge variant={urgencyBadge.variant} className="text-xs">
+                        <Badge variant={urgencyBadge.variant}>
                           <i className={`${urgencyBadge.icon} mr-1`}></i>
                           {urgencyBadge.text}
                         </Badge>

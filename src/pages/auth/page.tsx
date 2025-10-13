@@ -5,6 +5,8 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
+import { signUpDonorProfile, signUpBloodBank, signIn as firebaseSignIn } from '../../firebase/auth';
+import { getUserProfile } from '../../firebase/services';
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<'donor' | 'bloodbank'>('donor');
@@ -92,73 +94,143 @@ export default function Auth() {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     if (authMode === 'login') {
-      // Mock login logic
-      const userData = {
-        id: Date.now(),
-        email: formData.email,
-        type: activeTab,
-        firstName: activeTab === 'donor' ? 'John' : 'Lagos University Teaching Hospital',
-        lastName: activeTab === 'donor' ? 'Doe' : 'Blood Bank',
-        organizationName: activeTab === 'bloodbank' ? 'Lagos University Teaching Hospital Blood Bank' : undefined,
-        phone: formData.phone || '(555) 123-4567',
-        bloodType: formData.bloodType || 'O+',
-        dateOfBirth: formData.dateOfBirth || '1990-01-01',
-        loginTime: new Date().toISOString()
-      };
+      try {
+        const userCredential = await firebaseSignIn(formData.email, formData.password);
+        const uid = userCredential.user.uid;
 
-      localStorage.setItem('bloodlink_user', JSON.stringify(userData));
-      localStorage.setItem('bloodlink_auth_token', 'mock_token_' + Date.now());
+        // Fetch user's Firestore profile
+        const userDoc = await getUserProfile(uid);
+        if (!userDoc.exists()) {
+          // If profile missing, sign out and show error
+          alert('User profile not found. Please contact support.');
+          return;
+        }
 
-      // Redirect based on user type
-      if (activeTab === 'donor') {
-        navigate('/profile');
-      } else if (activeTab === 'bloodbank') {
-        navigate('/blood-banks/dashboard');
+        const raw = userDoc.data() as any;
+        // Normalize userType to canonical lowercase values used across the app
+        const rawType = (raw.userType || raw.type || '').toString();
+        const normalizedType = rawType.toLowerCase().includes('blood') ? 'bloodbank' : rawType.toLowerCase().includes('admin') ? 'superadmin' : 'donor';
+        const userData = {
+          id: uid,
+          // keep original fields
+          ...raw,
+          // normalized type and name fields for UI
+          type: normalizedType,
+          firstName: raw.firstName || (raw.fullName ? raw.fullName.split(' ')[0] : ''),
+          lastName: raw.lastName || (raw.fullName ? raw.fullName.split(' ').slice(1).join(' ') : ''),
+        };
+        // Ensure the selected login tab matches the user's role to prevent role spoofing
+        const expectedType = activeTab === 'donor' ? 'donor' : 'bloodBank';
+        if (userData.userType !== expectedType && userData.userType !== 'superAdmin') {
+          // Sign out the user to be safe
+          try {
+            // firebaseSignIn already signed them in; sign them out
+            await import('../../firebase/auth').then(m => m.signOut());
+          } catch (e) {
+            console.warn('Error signing out after role mismatch', e);
+          }
+          alert(`You are signing in as ${activeTab === 'donor' ? 'Donor' : 'Blood Bank'}. Your account is registered as ${userData.userType}. Please choose the correct login type.`);
+          setIsLoading(false);
+          return;
+        }
+        localStorage.setItem('bloodlink_user', JSON.stringify(userData));
+        // token stored by Firebase; keep a simple marker
+        localStorage.setItem('bloodlink_auth_token', 'firebase_auth_' + Date.now());
+
+        // Redirect based on user type
+        if (userData.userType === 'donor') {
+          navigate('/profile');
+        } else if (userData.userType === 'bloodBank') {
+          navigate('/blood-banks/dashboard');
+        } else if (userData.userType === 'superAdmin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/');
+        }
+      } catch (err: any) {
+        console.error('Login error', err);
+        alert(err?.message || 'Login failed');
       }
     } else {
-      // Mock signup logic - save user data
-      const userData = {
-        id: Date.now(),
-        email: formData.email,
-        type: activeTab,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        bloodType: formData.bloodType,
-        dateOfBirth: formData.dateOfBirth,
-        organizationName: formData.organizationName,
-        licenseNumber: formData.licenseNumber,
-        address: formData.address,
-        signupTime: new Date().toISOString()
-      };
+        try {
+          if (activeTab === 'bloodbank') {
+            // Create blood bank user and documents
+            const userProfileData = {
+              fullName: formData.organizationName || '',
+              email: formData.email,
+              userType: 'bloodBank',
+              phone: formData.phone || '',
+              address: formData.address || ''
+            };
 
-      if (activeTab === 'bloodbank') {
-        // For blood bank registration, show success message
-        setShowSuccess(true);
-        setTimeout(() => {
-          setAuthMode('login');
-          setShowSuccess(false);
-          // Clear form data
-          setFormData({
-            email: '',
-            password: '',
-            confirmPassword: '',
-            firstName: '',
-            lastName: '',
-            phone: '',
-            bloodType: '',
-            dateOfBirth: '',
-            organizationName: '',
-            licenseNumber: '',
-            address: ''
-          });
-        }, 3000);
-      } else {
-        // For donor registration, auto-login
-        localStorage.setItem('bloodlink_user', JSON.stringify(userData));
-        localStorage.setItem('bloodlink_auth_token', 'mock_token_' + Date.now());
-        navigate('/profile');
-      }
+            const bloodBankData = {
+              name: formData.organizationName || '',
+              address: formData.address || '',
+              licenseNumber: formData.licenseNumber || '',
+              contactEmail: formData.email,
+              contactPhone: formData.phone || '',
+              approved: false,
+              inventory: {},
+            };
+
+            await signUpBloodBank(formData.email, formData.password, userProfileData as any, bloodBankData as any);
+            setShowSuccess(true);
+            setTimeout(() => {
+              setAuthMode('login');
+              setShowSuccess(false);
+              setFormData({
+                email: '',
+                password: '',
+                confirmPassword: '',
+                firstName: '',
+                lastName: '',
+                phone: '',
+                bloodType: '',
+                dateOfBirth: '',
+                organizationName: '',
+                licenseNumber: '',
+                address: ''
+              });
+            }, 3000);
+          } else {
+            // Donor signup with Firestore profile
+            const userProfileData = {
+              fullName: `${formData.firstName} ${formData.lastName}`,
+              email: formData.email,
+              userType: 'donor',
+              phone: formData.phone || '',
+              address: ''
+            };
+
+            // Create Auth user and Firestore profile
+            const userCredential = await signUpDonorProfile(formData.email, formData.password, userProfileData as any);
+            // Normalize and store profile in localStorage so dashboards can read it
+            try {
+              const newUid = userCredential.user.uid;
+              const createdDoc = await getUserProfile(newUid);
+              const raw = createdDoc.exists() ? (createdDoc.data() as any) : userProfileData;
+              const rawType = (raw.userType || raw.type || '').toString();
+              const normalizedType = rawType.toLowerCase().includes('blood') ? 'bloodbank' : rawType.toLowerCase().includes('admin') ? 'superadmin' : 'donor';
+              const normalized = {
+                id: newUid,
+                ...raw,
+                type: normalizedType,
+                firstName: raw.firstName || (raw.fullName ? raw.fullName.split(' ')[0] : formData.firstName),
+                lastName: raw.lastName || (raw.fullName ? raw.fullName.split(' ').slice(1).join(' ') : formData.lastName),
+              };
+              localStorage.setItem('bloodlink_user', JSON.stringify(normalized));
+              localStorage.setItem('bloodlink_auth_token', 'firebase_auth_' + Date.now());
+            } catch (e) {
+              console.warn('Failed to persist created user to localStorage', e);
+            }
+
+            // After signup, redirect to profile
+            navigate('/profile');
+          }
+        } catch (err: any) {
+          console.error('Signup error', err);
+          alert(err?.message || 'Signup failed.');
+        }
     }
 
     setIsLoading(false);

@@ -1,5 +1,3 @@
-
-// src/firebase/services.ts
 import { 
   collection, 
   doc, 
@@ -11,9 +9,8 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from './index';
-import { User, BloodBank, Request, Transaction } from './types';
+import type { User, BloodBank, Request, Transaction } from './types';
 
-// --- User Services ---
 
 /**
  * Creates a user profile in Firestore.
@@ -31,6 +28,22 @@ export const createUserProfile = (uid: string, data: Omit<User, 'uid' | 'created
 };
 
 /**
+ * Creates a blood bank document. This should be called after creating an Auth user for the facility.
+ * @param uid The facility user's uid (used as doc id).
+ * @param data The blood bank data to save.
+ */
+export const createBloodBank = (uid: string, data: Omit<BloodBank, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const bankRef = doc(db, 'blood_banks', uid);
+  return setDoc(bankRef, {
+    ...data,
+    id: uid,
+    approved: data.approved ?? false,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+};
+
+/**
  * Get a user's profile from Firestore.
  * @param uid The user's unique ID.
  */
@@ -39,7 +52,6 @@ export const getUserProfile = (uid: string) => {
   return getDoc(userRef);
 };
 
-// --- BloodBank Services ---
 
 /**
  * Updates a blood bank's inventory in real-time.
@@ -59,14 +71,12 @@ export const updateInventory = (facilityId: string, inventory: BloodBank['invent
  * @param facilityId The ID of the blood bank.
  * @param callback The function to call with the updated data.
  */
-export const onBloodBankUpdate = (facilityId: string, callback) => {
+export const onBloodBankUpdate = (facilityId: string, callback: (data: BloodBank | undefined) => void) => {
   const bankRef = doc(db, 'blood_banks', facilityId);
-  return onSnapshot(bankRef, (doc) => {
-    callback(doc.data() as BloodBank);
+  return onSnapshot(bankRef, (docSnap) => {
+    callback((docSnap.exists() ? (docSnap.data() as BloodBank) : undefined));
   });
 };
-
-// --- Request Services ---
 
 /**
  * Creates a new resource request.
@@ -86,16 +96,14 @@ export const createRequest = (requestData: Omit<Request, 'id' | 'createdAt' | 'u
  * @param userId The ID of the user.
  * @param callback The function to call with the list of requests.
  */
-export const onUserRequestsUpdate = (userId: string, callback) => {
+export const onUserRequestsUpdate = (userId: string, callback: (requests: Request[]) => void) => {
   const requestsCollection = collection(db, 'requests');
-  // In a real app, you would query here, e.g., query(requestsCollection, where("userId", "==", userId))
   return onSnapshot(requestsCollection, (snapshot) => {
-    const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Request));
+    const requests = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) } as Request));
     callback(requests.filter(req => req.userId === userId));
   });
 };
 
-// --- Transaction Services ---
 
 /**
  * Creates a new transaction record.

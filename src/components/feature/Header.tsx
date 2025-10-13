@@ -1,13 +1,13 @@
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../base/Button';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const publicNavigation = [
     { name: 'Home', href: '/' },
@@ -17,20 +17,18 @@ export default function Header() {
   ];
 
   useEffect(() => {
-    const currentUser = localStorage.getItem('bloodlink_user');
-    if (currentUser) {
-      setUser(JSON.parse(currentUser));
-    }
   }, [location]);
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path;
 
-  const handleLogout = () => {
-    localStorage.removeItem('bloodlink_user');
-    localStorage.removeItem('bloodlink_auth_token');
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn('Sign out failed, clearing local state', e);
+      try { localStorage.removeItem('bloodlink_user'); } catch {}
+      try { localStorage.removeItem('bloodlink_auth_token'); } catch {}
+    }
     navigate('/');
   };
 
@@ -78,12 +76,30 @@ export default function Header() {
                   </div>
                   <div className="text-sm">
                     <div className="font-medium text-gray-900">
-                      {user.type === 'bloodbank' ? user.organizationName || user.firstName : `${user.firstName} ${user.lastName}`}
+                      {user.userType === 'bloodbank'
+                        ? user.organizationName || user.fullName
+                        : user.userType === 'superadmin'
+                          ? user.organizationName || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`
+                          : user.fullName || `${user.firstName || ''} ${user.lastName || ''}`}
                     </div>
-                    <div className="text-xs text-gray-500 capitalize">{user.type === 'bloodbank' ? 'Blood Bank' : 'Donor'}</div>
+                    <div className="text-xs text-gray-500 capitalize">
+                      {user.userType === 'bloodbank'
+                        ? 'Blood Bank'
+                        : user.userType === 'superadmin'
+                          ? 'Admin'
+                          : 'Donor'}
+                    </div>
                   </div>
                 </div>
-                <Link to={user.type === 'bloodbank' ? '/blood-banks/dashboard' : '/donor/dashboard'}>
+                <Link
+                  to={
+                    user.userType === 'bloodbank'
+                      ? '/blood-banks/dashboard'
+                      : user.userType === 'superadmin'
+                        ? '/admin/dashboard'
+                        : '/donor/dashboard'
+                  }
+                >
                   <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-500">
                     <i className="ri-dashboard-line mr-2"></i>
                     Dashboard
@@ -155,13 +171,26 @@ export default function Header() {
                         </div>
                         <div className="text-sm">
                           <div className="font-medium text-gray-900">
-                            {user.type === 'bloodbank' ? user.organizationName || user.firstName : `${user.firstName} ${user.lastName}`}
+                            {user.userType === 'bloodbank'
+                              ? user.organizationName || user.firstName
+                              : `${user.firstName || ''} ${user.lastName || ''}`}
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">{user.type === 'bloodbank' ? 'Blood Bank' : 'Donor'}</div>
+                          <div className="text-xs text-gray-500 capitalize">
+                            {user.userType === 'bloodbank' ? 'Blood Bank' : user.userType === 'superadmin' ? 'Admin' : 'Donor'}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <Link to={user.type === 'bloodbank' ? '/blood-banks/dashboard' : '/donor/dashboard'} onClick={() => setIsMenuOpen(false)}>
+                    <Link
+                      to={
+                        user.userType === 'bloodbank'
+                          ? '/blood-banks/dashboard'
+                          : user.userType === 'superadmin'
+                            ? '/admin/dashboard'
+                            : '/donor/dashboard'
+                      }
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-500">
                         <i className="ri-dashboard-line mr-2"></i>
                         Dashboard

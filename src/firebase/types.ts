@@ -1,18 +1,15 @@
-
-// src/firebase/types.ts
-import { Timestamp } from 'firebase/firestore';
-
 // Base user profile
-export interface User {
+export type User = {
   uid: string;
   fullName: string;
   email: string;
-  userType: 'donor' | 'bloodBank' | 'superAdmin';
+  userType: 'donor' | 'bloodbank' | 'superadmin';
   phone?: string;
   address?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
+  createdAt?: any;
+  updatedAt?: any;
+  [key: string]: any;
+};
 
 // Blood Bank / Facility specific data
 export interface BloodBank {
@@ -21,33 +18,34 @@ export interface BloodBank {
   address: string;
   contactEmail: string;
   contactPhone: string;
-  approved: boolean; // Vetted offline before they can log in
+  approved: boolean; // vetted offline before login
   inventory: {
     [resourceType: string]: {
       quantity: number;
       pricePerUnit: number;
-      lastUpdated: Timestamp;
+      lastUpdated: any;
     };
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  status?: 'pending' | 'approved' | 'rejected';
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 // Resource Request
 export interface Request {
   id: string;
-  userId: string; // ID of the user making the request
-  facilityId: string; // ID of the blood bank the request is for
-  resourceType: string; // e.g., 'blood', 'oxygen', 'medicine'
+  userId: string;
+  facilityId: string;
+  resourceType: string;
   resourceDetails: {
-    type: string; // e.g., 'O+', 'A-', 'Cylinder-5L'
+    type: string;
     quantity: number;
     price: number;
   };
   status: 'pending' | 'completed' | 'rejected';
   notes?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 // Transaction record
@@ -57,6 +55,6 @@ export interface Transaction {
   amount: number;
   status: 'paid' | 'pending' | 'failed';
   paymentMethod?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt?: any;
+  updatedAt?: any;
 }

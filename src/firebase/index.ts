@@ -1,15 +1,15 @@
-
-// src/firebase/index.ts
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { firebaseConfig } from './config';
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
 
-// Get Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
+isSupported().then((supported) => {
+  if (supported) getAnalytics(app);
+});
 
-export { app, auth, db };
+export default app;

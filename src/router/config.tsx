@@ -1,6 +1,6 @@
-
-import { RouteObject } from 'react-router-dom';
+import type { RouteObject } from 'react-router-dom';
 import { lazy } from 'react';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Lazy load components
 const Home = lazy(() => import('../pages/home/page'));
@@ -17,69 +17,58 @@ const Facilities = lazy(() => import('../pages/facilities/page'));
 const FacilityDetail = lazy(() => import('../pages/facilities/detail/page'));
 const FacilityDashboard = lazy(() => import('../pages/facilities/dashboard/page'));
 const AdminDashboard = lazy(() => import('../pages/admin/dashboard/page'));
+const AccessRevoked = lazy(() => import('../pages/access-revoked/page'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
 const routes: RouteObject[] = [
-  {
-    path: '/',
-    element: <Home />
-  },
-  {
-    path: '/about',
-    element: <About />
-  },
-  {
-    path: '/auth',
-    element: <Auth />
-  },
-  {
-    path: '/request',
-    element: <Request />
-  },
-  {
-    path: '/donate',
-    element: <Donate />
-  },
-  {
-    path: '/profile',
-    element: <Profile />
-  },
-  {
-    path: '/blood-banks',
-    element: <BloodBanks />
-  },
-  {
-    path: '/blood-banks/:id',
-    element: <BloodBankDetail />
-  },
+  { path: '/', element: <Home /> },
+  { path: '/about', element: <About /> },
+  { path: '/auth', element: <Auth /> },
+  { path: '/request', element: <Request /> },
+  { path: '/donate', element: <Donate /> },
+  { path: '/profile', element: <Profile /> },
+  { path: '/blood-banks', element: <BloodBanks /> },
+  { path: '/blood-banks/:id', element: <BloodBankDetail /> },
+
   {
     path: '/blood-banks/dashboard',
-    element: <BloodBankDashboard />
+    element: (
+      <ProtectedRoute allowedRoles={['bloodbank']} requireApproved>
+        <BloodBankDashboard />
+      </ProtectedRoute>
+    )
   },
   {
     path: '/donor/dashboard',
-    element: <DonorDashboard />
+    element: (
+      <ProtectedRoute allowedRoles={['donor']}>
+        <DonorDashboard />
+      </ProtectedRoute>
+    )
   },
-  {
-    path: '/facilities',
-    element: <Facilities />
-  },
-  {
-    path: '/facilities/:id',
-    element: <FacilityDetail />
-  },
+  { path: '/facilities', element: <Facilities /> },
+  { path: '/facilities/:id', element: <FacilityDetail /> },
   {
     path: '/facilities/dashboard',
-    element: <FacilityDashboard />
+    element: (
+      <ProtectedRoute allowedRoles={['bloodbank']} requireApproved>
+        <FacilityDashboard />
+      </ProtectedRoute>
+    )
   },
   {
     path: '/admin/dashboard',
-    element: <AdminDashboard />
+    element: (
+      <ProtectedRoute allowedRoles={['superadmin']}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    )
   },
   {
-    path: '*',
-    element: <NotFound />
-  }
+    path: '/access-revoked',
+    element: <AccessRevoked />
+  },
+  { path: '*', element: <NotFound /> }
 ];
 
 export default routes;
