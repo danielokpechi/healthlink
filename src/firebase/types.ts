@@ -58,3 +58,20 @@ export interface Transaction {
   createdAt?: any;
   updatedAt?: any;
 }
+
+export interface Donation {
+  id: string;
+  fullName: string;
+  bloodType: string;
+  phone: string;
+  donorEmail: string;
+  requestTime: string;
+  status: 'pending' | 'completed' | 'rejected';
+  notes?: string;
+  createdAt?: any;
+  // updatedAt?: any;
+  preferredDate: string;
+  emergencyContact: string;
+  lastDonation: string;
+  preferredTime?: string;
+}

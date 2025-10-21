@@ -430,10 +430,10 @@ const loadRecentActivity = async () => {
                 <option value="30d">Last 30 Days</option>
                 <option value="90d">Last 90 Days</option>
               </select> */}
-              <Button className="bg-white text-pink-600 hover:bg-gray-50">
+              {/* <Button className="bg-white text-pink-600 hover:bg-gray-50">
                 <i className="ri-download-line mr-2"></i>
                 Export Report
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

@@ -1,18 +1,28 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
+import { db } from "../../../firebase"; 
+import { collection, query, where, getDoc, getDocs, updateDoc, doc } from "firebase/firestore";
+import { useNotification } from '../../../context/NotificationContext';
+import type { Donation } from '../../../firebase/types';
+import { auth } from "../../../firebase";
 
 export default function BloodBankDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
+  const [donations, setDonations] = useState<any[]>([]);
+  const [selectedBloodBankId, setSelectedBloodBankId] = useState<string | null>(null);
+
   const { user } = useAuth();
+  // const selectedBloodBankId = user?.bloodBankId;
   const navigate = useNavigate();
+  const { notify } = useNotification(); 
 
   const [bloodInventory, setBloodInventory] = useState([
     { type: 'A+', quantity: 15, price: 15000, available: true },
@@ -82,6 +92,21 @@ export default function BloodBankDashboard() {
     { id: 4, patient: 'Amina Yusuf', amount: 44000, bloodType: 'AB+', date: '2024-01-12', status: 'completed' }
   ]);
 
+   useEffect(() => {
+    const fetchUserData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        setSelectedBloodBankId(userData?.uid);
+        console.log("Fetched user data:", userData);
+      }
+    };
+    fetchUserData();
+  }, []);
+
   useEffect(() => {
     if (!user) {
       // If auth context isn't populated yet, wait briefly
@@ -97,6 +122,85 @@ export default function BloodBankDashboard() {
     }
     setIsLoading(false);
   }, [navigate]);
+
+  useEffect(() => {
+      const fetchDonations = async () => {
+          try {
+              if (!selectedBloodBankId) {
+                  return;
+              }
+
+              const q = query(
+                  collection(db, "donations"),
+                  where("location", "==", selectedBloodBankId)
+              );
+              const querySnapshot = await getDocs(q);
+
+              const fetchedDonations: Donation[] = querySnapshot.docs.map((doc) => {
+                  const data = doc.data();
+                  return {
+                      id: doc.id,
+                      fullName: data.fullName || "UNKNOWN",
+                      bloodType: data.bloodType || "UNKNOWN",
+                      phone: data.phone || "",
+                      donorEmail: data.donorEmail || "",
+                      requestTime: data.createdAt
+                          ? data.createdAt.toDate().toLocaleString()
+                          : "Unknown",
+                      status: data.status || "pending",
+                      preferredDate: data.preferredDate || "",
+                      emergencyContact: data.emergencyContact || "",
+                      lastDonation: data.lastDonation || "",
+                      notes: data.medicalHistory || "",
+                      preferredTime: data.preferredTime || "",
+                  };
+              });
+
+              const sortedDonations = fetchedDonations.sort((a, b) => {
+                  if (a.status === 'pending' && b.status !== 'pending') {
+                      return -1;
+                  }
+                  if (a.status !== 'pending' && b.status === 'pending') {
+                      return 1;
+                  }
+                  return 0;
+              });
+
+              setDonations(sortedDonations);
+          } catch (error) {
+              console.error("Error fetching donations:", error);
+          }
+      };
+
+      fetchDonations();
+  }, [selectedBloodBankId]);
+
+  const handleCompleteDonation = async (donationId: string) => {
+    try {
+      const donationRef = doc(db, "donations", donationId);
+      
+      // Update the status of the donation to 'completed'
+      await updateDoc(donationRef, {
+        status: 'completed',
+        completedAt: new Date()  // Optional: Add the timestamp of when it was completed
+      });
+
+      // Update the local state to reflect the change in status
+      setDonations(prevDonations => 
+        prevDonations.map(donation => 
+          donation.id === donationId ? { ...donation, status: 'completed' } : donation
+        )
+      );
+      
+      // Optionally, notify the user that the donation was completed
+      notify({ type: 'success', message: 'Donation request completed successfully!' });
+      
+    } catch (error) {
+      console.error("Error completing donation:", error);
+      notify({ type: 'error', message: 'Failed to complete donation request. Please try again.' });
+    }
+  };
+
 
   const updateQuantity = (type: string, newQuantity: number) => {
     setBloodInventory(prev => 
@@ -131,7 +235,11 @@ export default function BloodBankDashboard() {
     return { level: 'good', color: 'success' };
   };
 
-  const getUrgencyBadge = (urgency: string) => {
+  const getUrgencyBadge = (urgency: string | undefined) => {
+    if (!urgency) {
+      return { variant: 'default' as const, text: 'UNKNOWN' };
+    }
+
     switch (urgency) {
       case 'emergency': return { variant: 'danger' as const, text: 'EMERGENCY' };
       case 'urgent': return { variant: 'warning' as const, text: 'URGENT' };
@@ -199,6 +307,7 @@ export default function BloodBankDashboard() {
               { id: 'dashboard', label: 'Dashboard', icon: 'ri-dashboard-line' },
               { id: 'inventory', label: 'Inventory', icon: 'ri-drop-line' },
               { id: 'requests', label: 'Requests', icon: 'ri-file-list-line' },
+              { id: 'donations', label: 'Donations', icon: 'ri-heart-line' },
               { id: 'payments', label: 'Payments', icon: 'ri-money-dollar-circle-line' },
               { id: 'account', label: 'Account', icon: 'ri-settings-line' }
             ].map((tab) => (
@@ -474,7 +583,7 @@ export default function BloodBankDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">
                   Blood Requests Management
                 </h2>
-                <div className="flex space-x-2">
+                {/* <div className="flex space-x-2">
                   <Button size="sm" variant="outline">
                     <i className="ri-filter-line mr-2"></i>
                     Filter
@@ -483,7 +592,7 @@ export default function BloodBankDashboard() {
                     <i className="ri-sort-asc mr-2"></i>
                     Sort
                   </Button>
-                </div>
+                </div> */}
               </div>
               
               <div className="space-y-4">
@@ -550,6 +659,58 @@ export default function BloodBankDashboard() {
                             <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white">
                               <i className="ri-check-line mr-2"></i>
                               Accept
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'donations' && (
+            <Card>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Donation Requests</h3>
+              <div className="space-y-4">
+                {donations.map((donation) => {
+                  // const urgencyBadge = getUrgencyBadge(donation.urgency);
+                  return (
+                    <Card key={donation.id} className="border-l-4 border-l-pink-500">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <h3 className="font-semibold text-gray-900 text-lg">{donation.fullName}</h3>
+                            {/* <Badge variant={urgencyBadge.variant}>{urgencyBadge.text}</Badge> */}
+                            <Badge variant={donation.status === 'pending' ? 'warning' : 'success'}>{donation.status.toUpperCase()}</Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                            <div><span className="font-medium">Blood Type:</span> {donation.bloodType}</div>
+                            <div><span className="font-medium">Emergency Contact: <br /> </span> {donation.emergencyContact} </div>
+                            <div><span className="font-medium">Preferred Date: <br /> </span> {donation.preferredDate}</div>
+                            <div><span className="font-medium">Requested: <br /> </span> {donation.requestTime}</div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                            <div><span className="font-medium">Phone:</span> {donation.phone}</div>
+                            <div><span className="font-medium">Email:</span> {donation.donorEmail}</div>
+                            <div><span className="font-medium">Last Donation:</span> {donation.lastDonation}</div>
+                            <div><span className="font-medium">Preferred Time:</span> {donation.preferredTime}</div>
+                          </div>
+
+                          {donation.notes && (
+                            <div className="text-sm text-gray-600"><span className="font-medium">Notes:</span> {donation.notes}</div>
+                          )}
+                        </div>
+                        
+                        {donation.status === 'pending' && (
+                          <div className="flex space-x-2 ml-4">
+                            <Button size="sm" variant="outline">
+                              <i className="ri-close-line mr-2"></i> Reject
+                            </Button>
+                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleCompleteDonation(donation.id)}>
+                              <i className="ri-check-line mr-2"></i> Complete
                             </Button>
                           </div>
                         )}

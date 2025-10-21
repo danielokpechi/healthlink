@@ -9,6 +9,11 @@ import Badge from '../../../components/base/Badge';
 
 export default function DonorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  const [nextEligibleDate, setNextEligibleDate] = useState<string>('2024-03-15');
+  const [daysLeft, setDaysLeft] = useState<number>(0);
+  const [statusColor, setStatusColor] = useState<string>('green');
+  const [statusMessage, setStatusMessage] = useState<string>('You can donate again in 45 days');
+  
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -78,13 +83,13 @@ export default function DonorDashboard() {
     }
   ]);
 
-  const [stats] = useState({
-    totalDonations: 8,
-    livesSaved: 24,
-    nextEligibleDate: '2024-03-15',
-    donorRank: 'Gold Donor',
-    totalVolume: '8 pints'
-  });
+  // const [stats] = useState({
+  //   totalDonations: 8,
+  //   livesSaved: 24,
+  //   nextEligibleDate: '2024-03-15',
+  //   donorRank: 'Gold Donor',
+  //   totalVolume: '8 pints'
+  // });
 
   useEffect(() => {
     if (!user) {
@@ -94,12 +99,48 @@ export default function DonorDashboard() {
       }, 50);
       return;
     }
-    if ((user.type || user.userType || '').toString().toLowerCase() !== 'donor') {
-      navigate('/');
-      return;
+    
+    const lastDonationDate = new Date(donationHistory[0].date);  // Get the last donation date
+    const nextEligible = new Date(lastDonationDate);
+    nextEligible.setDate(nextEligible.getDate() + 90); // Adding 90 days to the last donation date
+    
+    setNextEligibleDate(nextEligible.toLocaleDateString());
+
+    const calculateDaysLeft = () => {
+      const today = new Date();
+      const diffInTime = nextEligible.getTime() - today.getTime();
+      const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
+      setDaysLeft(diffInDays);
+    };
+    
+    calculateDaysLeft();
+
+    const interval = setInterval(() => {
+      calculateDaysLeft(); // Recalculate every day
+    }, 1000 * 3600 * 24);
+
+    // Cleanup the interval when component unmounts
+    return () => clearInterval(interval);
+  }, [donationHistory, user, navigate]);
+
+  // Update status and color based on days left
+  useEffect(() => {
+    if (daysLeft <= 0) {
+      setStatusColor('green');
+      setStatusMessage('You can donate again now!');
+    } else if (daysLeft <= 14) {
+      setStatusColor('red');
+      setStatusMessage(`You can donate again in ${daysLeft} days.`);
+    } else if (daysLeft <= 45) {
+      setStatusColor('yellow');
+      setStatusMessage(`You can donate again in ${daysLeft} days.`);
+    } else {
+      setStatusColor('green');
+      setStatusMessage(`You can donate again in ${daysLeft} days.`);
     }
+
     setIsLoading(false);
-  }, [navigate]);
+  }, [daysLeft]);
 
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
@@ -165,7 +206,7 @@ export default function DonorDashboard() {
       <section className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0">
+            {/* <Card className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
                   <i className="ri-gift-line text-white text-xl"></i>
@@ -175,9 +216,9 @@ export default function DonorDashboard() {
                   <p className="text-2xl font-bold">{stats.totalDonations}</p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
             
-            <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+            {/* <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
                   <i className="ri-heart-pulse-line text-white text-xl"></i>
@@ -187,9 +228,9 @@ export default function DonorDashboard() {
                   <p className="text-2xl font-bold">{stats.livesSaved}</p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
             
-            <Card className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
+            {/* <Card className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
                   <i className="ri-drop-line text-white text-xl"></i>
@@ -199,9 +240,9 @@ export default function DonorDashboard() {
                   <p className="text-2xl font-bold">{stats.totalVolume}</p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
             
-            <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+            {/* <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mr-4">
                   <i className="ri-award-line text-white text-xl"></i>
@@ -211,7 +252,7 @@ export default function DonorDashboard() {
                   <p className="text-lg font-bold">{stats.donorRank}</p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Main Content */}
@@ -219,7 +260,7 @@ export default function DonorDashboard() {
             {/* Urgent Blood Requests */}
             <Card>
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Urgent Blood Requests Near You</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Blood Requests </h3>
                 <Link to="/request">
                   <Button size="sm" variant="outline">
                     View All
@@ -253,7 +294,8 @@ export default function DonorDashboard() {
                       <div className="flex justify-between items-center text-sm text-gray-500">
                         <div className="flex items-center">
                           <i className="ri-map-pin-line mr-1"></i>
-                          {request.location} • {request.distance}
+                          {request.location} 
+                          {/* • {request.distance} */}
                         </div>
                         <div className="flex items-center">
                           <i className="ri-time-line mr-1"></i>
@@ -262,10 +304,10 @@ export default function DonorDashboard() {
                       </div>
                       
                       <div className="mt-4 flex space-x-2">
-                        <Button size="sm" className="flex-1">
+                        {/* <Button size="sm" className="flex-1">
                           <i className="ri-heart-line mr-2"></i>
                           Respond
-                        </Button>
+                        </Button> */}
                         <Button size="sm" variant="outline">
                           <i className="ri-share-line mr-2"></i>
                           Share
@@ -280,22 +322,18 @@ export default function DonorDashboard() {
             {/* Donation History & Next Eligible */}
             <div className="space-y-6">
               {/* Next Eligible Date */}
-              <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+              <Card className={`bg-gradient-to-r from-${statusColor}-50 to-${statusColor}-50 text-white border-${statusColor}-200`}>
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className={`w-12 h-12 bg-${statusColor}-500 rounded-full flex items-center justify-center`}>
                     <i className="ri-calendar-check-line text-white text-xl"></i>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-green-800">Next Donation Eligible</h4>
-                    <p className="text-green-700 font-medium">{stats.nextEligibleDate}</p>
-                    <p className="text-sm text-green-600">You can donate again in 45 days</p>
+                    <h4 className="font-semibold text-black">Next Donation Eligible</h4>
+                    <p className="text-black font-medium">{nextEligibleDate}</p>
+                    <p className={`text-sm ${statusColor === 'red' ? 'text-red-100' : statusColor === 'yellow' ? 'text-yellow-100' : 'text-green-700'}`}>
+                      {statusMessage}
+                    </p>
                   </div>
-                </div>
-                <div className="mt-4">
-                  <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white">
-                    <i className="ri-calendar-line mr-2"></i>
-                    Set Reminder
-                  </Button>
                 </div>
               </Card>
 

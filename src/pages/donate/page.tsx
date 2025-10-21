@@ -1,13 +1,18 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+// import { Link } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
 import Badge from '../../components/base/Badge';
+import { db, auth } from "../../firebase";
+import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { useNotification } from "../../context/NotificationContext";
 
 export default function DonateBlood() {
+  const { notify } = useNotification();
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -22,7 +27,7 @@ export default function DonateBlood() {
     lastDonation: '',
     emergencyContact: ''
   });
-
+  const [loading, setLoading] = useState(false);
   const [eligibilityCheck, setEligibilityCheck] = useState({
     age: false,
     weight: false,
@@ -30,9 +35,59 @@ export default function DonateBlood() {
     lastDonation: false,
     medications: false
   });
-
   const [showEligibility, setShowEligibility] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
+  const [bloodBanks, setBloodBanks] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Get user profile from Firestore
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          console.log("Fetched user details:", userData);
+
+          // Pre-fill form fields
+          setFormData((prev) => ({
+            ...prev,
+            fullName: userData.fullName || "",
+            email: userData.email || user.email || "",
+            phone: userData.phone || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
+
+
+  useEffect(() => {
+    const fetchBloodBanks = async () => {
+      try {
+        const q = query(collection(db, "blood_banks"), where("approved", "==", true));
+        const snapshot = await getDocs(q);
+        const banks = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setBloodBanks(banks);
+        console.log("Fetched Blood Banks:", banks);
+      } catch (error) {
+        console.error("Error fetching blood banks:", error);
+      }
+    };
+
+    fetchBloodBanks();
+  }, []);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   
@@ -121,10 +176,50 @@ export default function DonateBlood() {
     setShowEligibility(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Donation form submitted:', formData);
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to schedule a donation.");
+        return;
+      }
+
+      await addDoc(collection(db, "donations"), {
+        ...formData,
+        donorId: user.uid,
+        donorEmail: user.email,
+        status: "pending", 
+        createdAt: serverTimestamp(),
+      });
+
+      notify({
+        type: "success",
+        message: "Donation appointment scheduled successfully! Pending blood bank approval.",
+      });
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        bloodType: "",
+        age: "",
+        weight: "",
+        location: "",
+        preferredDate: "",
+        preferredTime: "",
+        medicalHistory: "",
+        lastDonation: "",
+        emergencyContact: "",
+      });
+    } catch (error) {
+      console.error("Error scheduling donation:", error);
+      notify({ type: "error", message: "Failed to schedule donation. Please try again." });
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen page-transition">
@@ -443,17 +538,24 @@ export default function DonateBlood() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-4">Location Preference *</label>
+                <label className="block text-sm font-bold text-gray-700 mb-4">
+                  Location Preference *
+                </label>
                 <div className="relative">
-                  <input
-                    type="text"
+                  <select
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
-                    placeholder="Preferred donation center location"
                     required
-                    className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
-                  />
+                    className="w-full pl-14 pr-8 py-5 input-glass rounded-2xl text-base font-medium appearance-none"
+                  >
+                    <option value="">Select a blood bank</option>
+                    {bloodBanks.map((bank) => (
+                      <option key={bank.id} value={bank.id}>
+                        {bank.name || bank.address}
+                      </option>
+                    ))}
+                  </select>
                   <i className="ri-map-pin-line absolute left-5 top-5 text-pink-500 text-xl"></i>
                 </div>
               </div>
@@ -504,9 +606,14 @@ export default function DonateBlood() {
                   type="submit"
                   className="bg-gradient-to-r from-pink-500 to-red-500 shadow-2xl hover:shadow-pink-500/30"
                   size="lg"
+                  disabled={loading}
                 >
-                  <i className="ri-calendar-check-line mr-3"></i>
-                  Schedule Donation Appointment
+                  {loading ? (
+                    <i className="ri-loader-4-line animate-spin mr-3"></i> 
+                  ) : (
+                    <i className="ri-calendar-check-line mr-3"></i>
+                  )}
+                  {loading ? 'Scheduling...' : 'Schedule Donation Appointment'}
                 </Button>
               </div>
             </form>
@@ -550,7 +657,7 @@ export default function DonateBlood() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-bold text-gray-700">Operating Hours</h4>
-                    <Badge variant="success" className="font-bold">Open</Badge>
+                    <Badge variant="success">Open</Badge>
                   </div>
                   <p className="text-gray-600 text-sm mb-2">
                     <i className="ri-time-line mr-2 text-pink-500"></i>
