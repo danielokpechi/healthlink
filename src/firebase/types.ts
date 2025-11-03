@@ -1,4 +1,3 @@
-// Base user profile
 export type User = {
   uid: string;
   fullName: string;
@@ -11,14 +10,13 @@ export type User = {
   [key: string]: any;
 };
 
-// Blood Bank / Facility specific data
 export interface BloodBank {
   id: string;
   name: string;
   address: string;
   contactEmail: string;
   contactPhone: string;
-  approved: boolean; // vetted offline before login
+  approved: boolean; 
   inventory: {
     [resourceType: string]: {
       quantity: number;
@@ -31,7 +29,6 @@ export interface BloodBank {
   updatedAt?: any;
 }
 
-// Resource Request
 export interface Request {
   id: string;
   userId: string;
@@ -48,7 +45,6 @@ export interface Request {
   updatedAt?: any;
 }
 
-// Transaction record
 export interface Transaction {
   id: string;
   requestId: string;
@@ -74,4 +70,17 @@ export interface Donation {
   emergencyContact: string;
   lastDonation: string;
   preferredTime?: string;
+}
+
+export interface BloodRequest {
+  id: string;
+  patientName: string;
+  bloodType: string;
+  quantity: number;
+  urgency: string;
+  totalAmount: number;
+  contactNumber: string;
+  createdAt: Date
+  status: 'pending' | 'completed' | 'rejected';
+  medicalCondition: string;
 }

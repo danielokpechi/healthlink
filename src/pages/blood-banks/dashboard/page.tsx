@@ -12,70 +12,27 @@ import { collection, query, where, getDoc, getDocs, updateDoc, doc } from "fireb
 import { useNotification } from '../../../context/NotificationContext';
 import type { Donation } from '../../../firebase/types';
 import { auth } from "../../../firebase";
+import AddStockModal from '../AddStockModal';
+import { useInventory } from '../../../hooks/useInventory';
 
 export default function BloodBankDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
   const [donations, setDonations] = useState<any[]>([]);
   const [selectedBloodBankId, setSelectedBloodBankId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [requests, setRequests] = useState<any[]>([]);
 
   const { user } = useAuth();
   // const selectedBloodBankId = user?.bloodBankId;
   const navigate = useNavigate();
   const { notify } = useNotification(); 
+  const bankId = (user?.uid || user?.bloodBankId);
 
-  const [bloodInventory, setBloodInventory] = useState([
-    { type: 'A+', quantity: 15, price: 15000, available: true },
-    { type: 'A-', quantity: 8, price: 18000, available: true },
-    { type: 'B+', quantity: 12, price: 16000, available: true },
-    { type: 'B-', quantity: 3, price: 20000, available: true },
-    { type: 'AB+', quantity: 6, price: 22000, available: true },
-    { type: 'AB-', quantity: 2, price: 25000, available: true },
-    { type: 'O+', quantity: 20, price: 14000, available: true },
-    { type: 'O-', quantity: 4, price: 24000, available: true }
-  ]);
-
-  const [requests] = useState([
-    {
-      id: 1,
-      patientName: 'Adebayo Johnson',
-      bloodType: 'O+',
-      quantity: 2,
-      urgency: 'emergency',
-      contactPhone: '+234 803 123 4567',
-      contactEmail: 'adebayo.johnson@email.com',
-      requestTime: '2 hours ago',
-      status: 'pending',
-      totalCost: 28000,
-      notes: 'Urgent surgery required'
-    },
-    {
-      id: 2,
-      patientName: 'Fatima Ibrahim',
-      bloodType: 'A-',
-      quantity: 1,
-      urgency: 'urgent',
-      contactPhone: '+234 809 987 6543',
-      contactEmail: 'fatima.ibrahim@email.com',
-      requestTime: '4 hours ago',
-      status: 'pending',
-      totalCost: 18000,
-      notes: 'Regular treatment'
-    },
-    {
-      id: 3,
-      patientName: 'Chukwu Okoro',
-      bloodType: 'B+',
-      quantity: 3,
-      urgency: 'routine',
-      contactPhone: '+234 805 456 7890',
-      contactEmail: 'chukwu.okoro@email.com',
-      requestTime: '1 day ago',
-      status: 'completed',
-      totalCost: 48000,
-      notes: 'Scheduled procedure'
-    }
-  ]);
+  const {
+    items: bloodInventory, 
+    updateQuantity, updatePrice, toggleAvailability, addStock
+  } = useInventory(bankId);
 
   const [revenueData] = useState({
     totalRevenue: 5750000,
@@ -175,24 +132,23 @@ export default function BloodBankDashboard() {
       fetchDonations();
   }, [selectedBloodBankId]);
 
+  
+
   const handleCompleteDonation = async (donationId: string) => {
     try {
       const donationRef = doc(db, "donations", donationId);
-      
-      // Update the status of the donation to 'completed'
+
       await updateDoc(donationRef, {
         status: 'completed',
-        completedAt: new Date()  // Optional: Add the timestamp of when it was completed
+        completedAt: new Date() 
       });
 
-      // Update the local state to reflect the change in status
       setDonations(prevDonations => 
         prevDonations.map(donation => 
           donation.id === donationId ? { ...donation, status: 'completed' } : donation
         )
       );
-      
-      // Optionally, notify the user that the donation was completed
+
       notify({ type: 'success', message: 'Donation request completed successfully!' });
       
     } catch (error) {
@@ -202,29 +158,29 @@ export default function BloodBankDashboard() {
   };
 
 
-  const updateQuantity = (type: string, newQuantity: number) => {
-    setBloodInventory(prev => 
-      prev.map(item => 
-        item.type === type ? { ...item, quantity: Math.max(0, newQuantity) } : item
-      )
-    );
-  };
+  // const updateQuantity = (type: string, newQuantity: number) => {
+  //   setBloodInventory(prev => 
+  //     prev.map(item => 
+  //       item.type === type ? { ...item, quantity: Math.max(0, newQuantity) } : item
+  //     )
+  //   );
+  // };
 
-  const updatePrice = (type: string, newPrice: number) => {
-    setBloodInventory(prev => 
-      prev.map(item => 
-        item.type === type ? { ...item, price: Math.max(0, newPrice) } : item
-      )
-    );
-  };
+  // const updatePrice = (type: string, newPrice: number) => {
+  //   setBloodInventory(prev => 
+  //     prev.map(item => 
+  //       item.type === type ? { ...item, price: Math.max(0, newPrice) } : item
+  //     )
+  //   );
+  // };
 
-  const toggleAvailability = (type: string) => {
-    setBloodInventory(prev => 
-      prev.map(item => 
-        item.type === type ? { ...item, available: !item.available } : item
-      )
-    );
-  };
+  // const toggleAvailability = (type: string) => {
+  //   setBloodInventory(prev => 
+  //     prev.map(item => 
+  //       item.type === type ? { ...item, available: !item.available } : item
+  //     )
+  //   );
+  // };
 
   const getStockLevel = (
     quantity: number
@@ -286,14 +242,20 @@ export default function BloodBankDashboard() {
               </p>
             </div>
             <div className="flex space-x-3">
-              <Button className="bg-white text-pink-600 hover:bg-gray-50">
+              {/* <Button className="bg-white text-pink-600 hover:bg-gray-50">
                 <i className="ri-download-line mr-2"></i>
                 Export Report
-              </Button>
-              <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30">
+              </Button> */}
+              <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30" onClick={()=>setShowAdd(true)}>
                 <i className="ri-add-line mr-2"></i>
                 Add Stock
               </Button>
+
+              <AddStockModal
+                open={showAdd}
+                onClose={()=>setShowAdd(false)}
+                onCreate={async (p)=>{ await addStock(p.type, { price: p.price, quantity: p.quantity, available: p.available }); }}
+              />
             </div>
           </div>
         </div>
@@ -476,10 +438,10 @@ export default function BloodBankDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">
                   Blood Inventory Management
                 </h2>
-                <Button size="sm">
+                {/* <Button size="sm">
                   <i className="ri-refresh-line mr-2"></i>
                   Refresh
-                </Button>
+                </Button> */}
               </div>
               
               <div className="overflow-x-auto">
@@ -491,7 +453,7 @@ export default function BloodBankDashboard() {
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Price per Pint</th>
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Stock Level</th>
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Availability</th>
-                      <th className="text-left py-4 px-4 font-semibold text-gray-900">Actions</th>
+                      {/* <th className="text-left py-4 px-4 font-semibold text-gray-900">Actions</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -546,7 +508,7 @@ export default function BloodBankDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <button
-                              onClick={() => toggleAvailability(item.type)}
+                              onClick={() => toggleAvailability(item.type, !item.available)}
                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
                                 item.available ? 'bg-pink-500' : 'bg-gray-300'
                               }`}
@@ -558,7 +520,7 @@ export default function BloodBankDashboard() {
                               />
                             </button>
                           </td>
-                          <td className="py-4 px-4">
+                          {/* <td className="py-4 px-4">
                             <div className="flex space-x-2">
                               <Button size="sm" variant="outline">
                                 <i className="ri-edit-line"></i>
@@ -567,7 +529,7 @@ export default function BloodBankDashboard() {
                                 <i className="ri-more-line"></i>
                               </Button>
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       );
                     })}

@@ -1,72 +1,82 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+// import { Link } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
-import Badge from '../../components/base/Badge';
+// import Badge from '../../components/base/Badge';
+import { db } from "../../firebase";
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function RequestBlood() {
+  
+  const [bloodBanks, setBloodBanks] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     bloodType: '',
     urgency: '',
     location: '',
     patientName: '',
-    hospitalName: '',
+    totalAmount: '',
     contactNumber: '',
     unitsNeeded: '',
     medicalCondition: '',
     additionalNotes: ''
   });
+  const [unitPrice, setUnitPrice] = useState<number | null>(null);
 
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const totalAmount = useMemo(() => {
+    const units = Number(formData.unitsNeeded || 0);
+    return unitPrice != null ? units * unitPrice : 0;
+  }, [formData.unitsNeeded, unitPrice]);
+
+  useEffect(() => {
+    const fetchBloodBanks = async () => {
+      try {
+        const q = query(collection(db, "blood_banks"), where("approved", "==", true));
+        const snapshot = await getDocs(q);
+        const banks = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setBloodBanks(banks);
+        console.log("Fetched Blood Banks:", banks);
+      } catch (error) {
+        console.error("Error fetching blood banks:", error);
+      }
+    };
+
+    fetchBloodBanks();
+  }, []);
+
+  useEffect(() => {
+    if (!formData.location || !formData.bloodType) return;
+
+    const getPrice = async () => {
+      const bank = bloodBanks.find(b => b.id === formData.location);
+      if (!bank) return;
+
+      const invRef = collection(db, "blood_banks", bank.id, "inventory");
+      const snap = await getDocs(invRef);
+
+      snap.forEach(d => {
+        if (d.id === formData.bloodType) {
+          const data = d.data();
+          if (data.price) setUnitPrice(data.price);
+        }
+      });
+    };
+
+    getPrice();
+  }, [formData.location, formData.bloodType, bloodBanks]);
+
+
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   const urgencyLevels = [
     { value: 'critical', label: 'Critical (Within 2 hours)', color: 'red' },
     { value: 'urgent', label: 'Urgent (Within 24 hours)', color: 'orange' },
     { value: 'routine', label: 'Routine (Within 7 days)', color: 'green' }
-  ];
-
-  const availableBloodBanks = [
-    {
-      id: 1,
-      name: 'Lagos University Teaching Hospital Blood Bank',
-      address: 'Idi-Araba, Surulere, Lagos State',
-      distance: '2.5 km',
-      availability: { 'A+': 15, 'O+': 8, 'B+': 12, 'AB+': 3 },
-      price: '₦15,000',
-      status: 'Available',
-      phone: '+234 803 123 4567',
-      rating: 4.8,
-      responseTime: '30 mins'
-    },
-    {
-      id: 2,
-      name: 'National Hospital Abuja Blood Centre',
-      address: 'Central Business District, Abuja FCT',
-      distance: '1.8 km',
-      availability: { 'A+': 22, 'O+': 18, 'B+': 6, 'AB+': 9 },
-      price: '₦16,000',
-      status: 'Available',
-      phone: '+234 809 876 5432',
-      rating: 4.9,
-      responseTime: '15 mins'
-    },
-    {
-      id: 3,
-      name: 'University College Hospital Ibadan',
-      address: 'Queen Elizabeth Road, Ibadan, Oyo State',
-      distance: '3.2 km',
-      availability: { 'A+': 5, 'O+': 2, 'B+': 8, 'AB+': 1 },
-      price: '₦14,500',
-      status: 'Limited',
-      phone: '+234 805 456 7890',
-      rating: 4.6,
-      responseTime: '45 mins'
-    }
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -77,20 +87,31 @@ export default function RequestBlood() {
     }));
   };
 
-  const handleSearch = () => {
-    setIsSearching(true);
-    // Simulate search delay
-    setTimeout(() => {
-      setSearchResults(availableBloodBanks);
-      setIsSearching(false);
-    }, 1500);
+  const handleSubmitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    await addDoc(collection(db, "blood_requests"), {
+      ...formData,
+      totalAmount: totalAmount,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+
+    alert("Blood request submitted successfully!");
+
+    setFormData({
+      bloodType: '',
+      urgency: '',
+      location: '',
+      patientName: '',
+      totalAmount: '',
+      contactNumber: '',
+      unitsNeeded: '',
+      medicalCondition: '',
+      additionalNotes: ''
+    });
   };
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    console.log('Blood request submitted:', formData);
-  };
 
   return (
     <div className="min-h-screen page-transition">
@@ -184,30 +205,33 @@ export default function RequestBlood() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-4">Location *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-4">Select Blood Bank *</label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <select
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      placeholder="Enter city or hospital location"
                       required
-                      className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
-                    />
-                    <i className="ri-map-pin-line absolute left-5 top-5 text-red-500 text-xl"></i>
+                      className="w-full pl-14 pr-8 py-5 input-glass rounded-2xl text-base font-medium appearance-none"
+                    >
+                      <option value="">Choose Blood Bank</option>
+                      {bloodBanks.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                    <i className="ri-hospital-line absolute left-5 top-5 text-red-500 text-xl"></i>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-4">Units Needed *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-4">Pints Needed *</label>
                   <div className="relative">
                     <input
                       type="number"
                       name="unitsNeeded"
                       value={formData.unitsNeeded}
                       onChange={handleInputChange}
-                      placeholder="Number of units"
+                      placeholder="Number of pints"
                       min="1"
                       required
                       className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
@@ -233,19 +257,23 @@ export default function RequestBlood() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-4">Hospital Name *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-4">Total Amount (₦) *</label>
                   <div className="relative">
                     <input
                       type="text"
-                      name="hospitalName"
-                      value={formData.hospitalName}
-                      onChange={handleInputChange}
-                      placeholder="Name of hospital"
-                      required
+                      name="totalAmount"
+                      value={unitPrice == null ? '—' : `₦${totalAmount.toLocaleString()}`}
+                      readOnly
                       className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
                     />
-                    <i className="ri-hospital-line absolute left-5 top-5 text-red-500 text-xl"></i>
+                    <i className="ri-cash-line absolute left-5 top-5 text-red-500 text-xl"></i>
                   </div>
+
+                  {unitPrice != null && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      ₦{unitPrice.toLocaleString()} per pint × {formData.unitsNeeded || 0} pint(s)
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -295,22 +323,11 @@ export default function RequestBlood() {
               <div className="flex flex-col sm:flex-row gap-6">
                 <Button
                   type="button"
-                  onClick={handleSearch}
-                  disabled={!formData.bloodType || !formData.location || isSearching}
+                  disabled={!formData.bloodType || !formData.location}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 shadow-2xl hover:shadow-blue-500/30"
                   size="lg"
                 >
-                  {isSearching ? (
-                    <>
-                      <i className="ri-loader-4-line mr-3 animate-spin"></i>
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <i className="ri-search-line mr-3"></i>
-                      Search Blood Banks
-                    </>
-                  )}
+                      Blood Banks
                 </Button>
                 
                 <Button
@@ -326,95 +343,6 @@ export default function RequestBlood() {
           </Card>
         </div>
       </section>
-
-      {/* Search Results */}
-      {searchResults.length > 0 && (
-        <section className="py-20 bg-gradient-to-r from-gray-50/50 to-pink-50/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-black text-gray-900 mb-4">
-                Available 
-                <span className="gradient-text"> Blood Banks</span>
-              </h2>
-              <p className="text-xl text-gray-600">
-                Found {searchResults.length} blood banks with your required blood type
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-              {searchResults.map((bank) => (
-                <Card key={bank.id} variant="glass" className="hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">{bank.name}</h3>
-                      <p className="text-gray-600 text-sm flex items-center mb-2">
-                        <i className="ri-map-pin-line mr-2 text-red-500"></i>
-                        {bank.address}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-gray-500 text-sm font-medium">{bank.distance} away</p>
-                        <div className="flex items-center glass px-3 py-1 rounded-full">
-                          <i className="ri-star-fill text-yellow-400 text-sm mr-1"></i>
-                          <span className="text-sm font-bold text-gray-700">{bank.rating}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Badge variant={bank.status === 'Available' ? 'success' : 'warning'} className="ml-3 font-bold">
-                      {bank.status}
-                    </Badge>
-                  </div>
-
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-gray-700">Blood Type Availability</h4>
-                      <span className="text-lg font-black text-red-600">{bank.price}/unit</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {Object.entries(bank.availability).map(([type, count]) => (
-                        <div key={type} className="text-center">
-                          <div className={`w-full py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
-                            count < 5 
-                              ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-700 shadow-lg' 
-                              : count < 10 
-                              ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700 shadow-lg' 
-                              : 'bg-gradient-to-r from-green-100 to-green-200 text-green-700 shadow-lg'
-                          }`}>
-                            {type}
-                          </div>
-                          <span className="text-xs text-gray-500 mt-1 block font-medium">{count} units</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="ri-time-line mr-2 text-blue-500"></i>
-                      <span className="font-medium">Response: {bank.responseTime}</span>
-                    </div>
-                    <a href={`tel:${bank.phone}`} className="text-red-500 hover:text-red-600 text-sm font-bold cursor-pointer flex items-center glass px-4 py-2 rounded-xl transition-all duration-300">
-                      <i className="ri-phone-line mr-2"></i>
-                      Call Now
-                    </a>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button size="sm" className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 shadow-lg">
-                      <i className="ri-send-plane-fill mr-2"></i>
-                      Request Blood
-                    </Button>
-                    <Link to={`/blood-banks/${bank.id}`} className="flex-1">
-                      <Button variant="glass" size="sm" className="w-full shadow-lg">
-                        View Details
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Emergency Contact */}
       <section className="py-20">

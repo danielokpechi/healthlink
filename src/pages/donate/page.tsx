@@ -182,9 +182,40 @@ export default function DonateBlood() {
     try {
       const user = auth.currentUser;
       if (!user) {
-        alert("You must be logged in to schedule a donation.");
+        notify({ type: 'error', message: 'You must be logged in to schedule a donation.' });
         return;
       }
+
+      const donationsRef = collection(db, "donations");
+      const q2 = query(
+        donationsRef,
+        where("donorId", "==", user.uid),
+        where("status", "==", "completed")
+      );
+
+      const completedDocs = await getDocs(q2);
+        if (!completedDocs.empty) {
+          const lastDonation = completedDocs.docs
+            .map(d => d.data())
+            .sort((a, b) => new Date(b.preferredDate).getTime() - new Date(a.preferredDate).getTime())[0];
+
+          if (lastDonation?.preferredDate) {
+            const lastPreferred = new Date(lastDonation.preferredDate);
+            const nextEligible = new Date(lastPreferred);
+            nextEligible.setDate(nextEligible.getDate() + 90);
+
+            const today = new Date();
+
+            if (today < nextEligible) {
+              notify({
+                type: "error",
+                message: `You are not yet eligible to donate again. Next eligible date: ${nextEligible.toDateString()}`
+              });
+              setLoading(false);
+              return;
+            }
+          }
+        }
 
       await addDoc(collection(db, "donations"), {
         ...formData,

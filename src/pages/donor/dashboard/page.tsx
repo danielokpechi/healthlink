@@ -1,54 +1,25 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
+import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase"; 
+
 
 export default function DonorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
-  const [nextEligibleDate, setNextEligibleDate] = useState<string>('2024-03-15');
+  const [nextEligibleDate, setNextEligibleDate] = useState<string>('');
   const [daysLeft, setDaysLeft] = useState<number>(0);
   const [statusColor, setStatusColor] = useState<string>('green');
-  const [statusMessage, setStatusMessage] = useState<string>('You can donate again in 45 days');
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [donationHistory, setDonationHistory] = useState<any[]>([]);
   
   const { user } = useAuth();
-  const navigate = useNavigate();
-
-  const [donationHistory] = useState([
-    {
-      id: 1,
-      date: '2024-01-10',
-      type: 'Blood Donation',
-      bloodType: 'O+',
-      quantity: '1 pint',
-      location: 'Lagos University Teaching Hospital',
-      status: 'completed',
-      impact: '3 lives saved'
-    },
-    {
-      id: 2,
-      date: '2023-12-15',
-      type: 'Plasma Donation',
-      bloodType: 'O+',
-      quantity: '500ml',
-      location: 'National Hospital Abuja',
-      status: 'completed',
-      impact: '2 lives saved'
-    },
-    {
-      id: 3,
-      date: '2023-11-20',
-      type: 'Blood Donation',
-      bloodType: 'O+',
-      quantity: '1 pint',
-      location: 'University College Hospital',
-      status: 'completed',
-      impact: '3 lives saved'
-    }
-  ]);
+  // const navigate = useNavigate();
 
   const [urgentRequests] = useState([
     {
@@ -92,36 +63,55 @@ export default function DonorDashboard() {
   // });
 
   useEffect(() => {
-    if (!user) {
-      setTimeout(() => {
-        const current = window.localStorage.getItem('bloodlink_user');
-        if (!current) navigate('/auth');
-      }, 50);
-      return;
-    }
-    
-    const lastDonationDate = new Date(donationHistory[0].date);  // Get the last donation date
+    if (!user) return;
+    if (donationHistory.length === 0) return;
+
+    const lastDonationDate = new Date(donationHistory[0].preferredDate);  
     const nextEligible = new Date(lastDonationDate);
-    nextEligible.setDate(nextEligible.getDate() + 90); // Adding 90 days to the last donation date
-    
+    nextEligible.setDate(nextEligible.getDate() + 90);
+
     setNextEligibleDate(nextEligible.toLocaleDateString());
 
-    const calculateDaysLeft = () => {
-      const today = new Date();
-      const diffInTime = nextEligible.getTime() - today.getTime();
-      const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
-      setDaysLeft(diffInDays);
-    };
-    
-    calculateDaysLeft();
+    const today = new Date();
+    const diffInTime = nextEligible.getTime() - today.getTime();
+    const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
+    setDaysLeft(diffInDays);
 
-    const interval = setInterval(() => {
-      calculateDaysLeft(); // Recalculate every day
-    }, 1000 * 3600 * 24);
+  }, [donationHistory, user]);
 
-    // Cleanup the interval when component unmounts
-    return () => clearInterval(interval);
-  }, [donationHistory, user, navigate]);
+  console.log("donationHistory", donationHistory);
+
+  useEffect(() => {
+  const fetchDonations = async () => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "donations"),
+      where("donorId", "==", user.uid),
+      where("status", "==", "completed"),
+      orderBy("lastDonation", "desc"),
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const items:any[] = [];
+      querySnapshot.forEach(doc => {
+          items.push({ id: doc.id, ...doc.data() });
+      });
+
+      setDonationHistory(items);
+    }
+
+    setIsLoading(false);
+  };
+
+  fetchDonations();
+}, [user]);
+
+console.log("current user uid:", user.uid)
+// console.log("donorId in firestore", items[0].donorId)
+
 
   // Update status and color based on days left
   useEffect(() => {
@@ -330,7 +320,7 @@ export default function DonorDashboard() {
                   <div>
                     <h4 className="font-semibold text-black">Next Donation Eligible</h4>
                     <p className="text-black font-medium">{nextEligibleDate}</p>
-                    <p className={`text-sm ${statusColor === 'red' ? 'text-red-100' : statusColor === 'yellow' ? 'text-yellow-100' : 'text-green-700'}`}>
+                    <p className={`text-sm ${statusColor === 'red' ? 'text-red-100' : statusColor === 'yellow' ? 'text-black' : 'text-green-700'}`}>
                       {statusMessage}
                     </p>
                   </div>
@@ -341,14 +331,21 @@ export default function DonorDashboard() {
               <Card>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-semibold text-gray-900">Recent Donations</h3>
-                  <Link to="/profile">
-                    <Button size="sm" variant="outline">
-                      View All
-                    </Button>
-                  </Link>
+                  {donationHistory.length > 4 && (
+                    <Link to="/profile">
+                      <Button size="sm" variant="outline">
+                        View All
+                      </Button>
+                    </Link>
+                  )}
                 </div>
                 
                 <div className="space-y-4">
+                  {donationHistory.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      You haven’t made any donations yet.
+                    </p>
+                  )}
                   {donationHistory.slice(0, 3).map((donation) => (
                     <div key={donation.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
@@ -356,13 +353,12 @@ export default function DonorDashboard() {
                           <i className="ri-drop-line text-pink-500 text-sm"></i>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-900">{donation.type}</h4>
-                          <p className="text-sm text-gray-600">{donation.bloodType} • {donation.quantity}</p>
+                          <h4 className="font-medium text-gray-900">Blood Donation</h4>
+                          <p className="text-sm text-gray-600">{donation.bloodType} </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{donation.date}</p>
-                        <p className="text-xs text-green-600">{donation.impact}</p>
+                        <p className="text-sm font-medium text-gray-900">{donation.preferredDate}</p>
                       </div>
                     </div>
                   ))}
@@ -391,7 +387,7 @@ export default function DonorDashboard() {
                 <Link to="/request">
                   <Button variant="outline" className="w-full">
                     <i className="ri-search-line mr-2"></i>
-                    View All Requests
+                    Request Blood
                   </Button>
                 </Link>
               </div>

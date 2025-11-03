@@ -7,8 +7,11 @@ import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
 import { signUpDonorProfile, signUpBloodBank, signIn as firebaseSignIn } from '../../firebase/auth';
 import { getUserProfile } from '../../firebase/services';
+import { useNotification } from "../../context/NotificationContext";
 
 export default function Auth() {
+  const { notify } = useNotification();
+
   const [activeTab, setActiveTab] = useState<'donor' | 'bloodbank'>('donor');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,26 +58,26 @@ export default function Auth() {
     if (authMode === 'signup') {
       if (activeTab === 'donor') {
         if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
-          alert('Please fill in all required fields');
+          notify({ type:"error", message:"Please fill in all required fields" });
           return false;
         }
         if (formData.password !== formData.confirmPassword) {
-          alert('Passwords do not match');
+          notify({ type:"error", message:"Passwords do not match" });
           return false;
         }
         if (formData.password.length < 6) {
-          alert('Password must be at least 6 characters long');
+          notify({ type:"error", message:"Password must be at least 6 characters long" });
           return false;
         }
       } else {
         if (!formData.organizationName || !formData.licenseNumber || !formData.address || !formData.email || !formData.phone) {
-          alert('Please fill in all required fields');
+          notify({ type:"error", message:"Please fill in all required fields" });
           return false;
         }
       }
     } else {
       if (!formData.email || !formData.password) {
-        alert('Please enter your email and password');
+        notify({ type:"error", message:"Please enter your email and password" });
         return false;
       }
     }
@@ -98,16 +101,14 @@ export default function Auth() {
         const userCredential = await firebaseSignIn(formData.email, formData.password);
         const uid = userCredential.user.uid;
 
-        // Fetch user's Firestore profile
         const userDoc = await getUserProfile(uid);
         if (!userDoc.exists()) {
           // If profile missing, sign out and show error
-          alert('User profile not found. Please contact support.');
+          notify({ type:"error", message:"User profile not found. Please contact support." });
           return;
         }
 
         const raw = userDoc.data() as any;
-        // Normalize userType to canonical lowercase values used across the app
         const rawType = (raw.userType || raw.type || '').toString();
         const normalizedType = rawType.toLowerCase().includes('blood') ? 'bloodbank' : rawType.toLowerCase().includes('admin') ? 'superadmin' : 'donor';
         const userData = {
@@ -129,7 +130,10 @@ export default function Auth() {
           } catch (e) {
             console.warn('Error signing out after role mismatch', e);
           }
-          alert(`You are signing in as ${activeTab === 'donor' ? 'Donor' : 'Blood Bank'}. Your account is registered as ${userData.userType}. Please choose the correct login type.`);
+          notify({ 
+            type:"error", 
+            message:`You are signing in as ${activeTab === 'donor' ? 'Donor' : 'Blood Bank'}. Your account is registered as ${userData.userType}. Please choose the correct login type.`  
+          });
           setIsLoading(false);
           return;
         }
@@ -149,7 +153,7 @@ export default function Auth() {
         }
       } catch (err: any) {
         console.error('Login error', err);
-        alert(err?.message || 'Login failed');
+        notify({ type:"error", message: err?.message || 'Login failed' });
       }
     } else {
         try {
@@ -229,7 +233,7 @@ export default function Auth() {
           }
         } catch (err: any) {
           console.error('Signup error', err);
-          alert(err?.message || 'Signup failed.');
+          notify({ type:"error", message: err?.message || "Signup failed." });
         }
     }
 
