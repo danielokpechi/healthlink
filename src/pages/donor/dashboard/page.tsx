@@ -6,7 +6,7 @@ import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, getDocs, getDoc, doc } from "firebase/firestore";
 import { db } from "../../../firebase"; 
 
 
@@ -19,48 +19,8 @@ export default function DonorDashboard() {
   const [donationHistory, setDonationHistory] = useState<any[]>([]);
   
   const { user } = useAuth();
-  // const navigate = useNavigate();
 
-  const [urgentRequests] = useState([
-    {
-      id: 1,
-      bloodType: 'O+',
-      quantity: '2 pints',
-      urgency: 'emergency',
-      location: 'Lagos University Teaching Hospital',
-      distance: '2.5 km',
-      timePosted: '30 minutes ago',
-      description: 'Emergency surgery patient needs immediate blood transfusion'
-    },
-    {
-      id: 2,
-      bloodType: 'A+',
-      quantity: '1 pint',
-      urgency: 'urgent',
-      location: 'National Hospital Abuja',
-      distance: '5.2 km',
-      timePosted: '2 hours ago',
-      description: 'Cancer patient requires blood for treatment'
-    },
-    {
-      id: 3,
-      bloodType: 'B+',
-      quantity: '3 pints',
-      urgency: 'routine',
-      location: 'Federal Medical Centre',
-      distance: '8.1 km',
-      timePosted: '1 day ago',
-      description: 'Scheduled surgery preparation'
-    }
-  ]);
-
-  // const [stats] = useState({
-  //   totalDonations: 8,
-  //   livesSaved: 24,
-  //   nextEligibleDate: '2024-03-15',
-  //   donorRank: 'Gold Donor',
-  //   totalVolume: '8 pints'
-  // });
+  const [urgentRequests, setUrgentRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -82,38 +42,35 @@ export default function DonorDashboard() {
   console.log("donationHistory", donationHistory);
 
   useEffect(() => {
-  const fetchDonations = async () => {
-    if (!user) return;
+    const fetchDonations = async () => {
+      if (!user) return;
 
-    const q = query(
-      collection(db, "donations"),
-      where("donorId", "==", user.uid),
-      where("status", "==", "completed"),
-      orderBy("lastDonation", "desc"),
-    );
+      const q = query(
+        collection(db, "donations"),
+        where("donorId", "==", user.uid),
+        where("status", "==", "completed"),
+        orderBy("lastDonation", "desc"),
+      );
 
-    const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const items:any[] = [];
-      querySnapshot.forEach(doc => {
-          items.push({ id: doc.id, ...doc.data() });
-      });
+      if (!querySnapshot.empty) {
+        const items:any[] = [];
+        querySnapshot.forEach(doc => {
+            items.push({ id: doc.id, ...doc.data() });
+        });
 
-      setDonationHistory(items);
-    }
+        setDonationHistory(items);
+      }
 
-    setIsLoading(false);
-  };
+      setIsLoading(false);
+    };
 
-  fetchDonations();
-}, [user]);
+    fetchDonations();
+  }, [user]);
 
-console.log("current user uid:", user.uid)
-// console.log("donorId in firestore", items[0].donorId)
+  console.log("current user uid:", user.uid)
 
-
-  // Update status and color based on days left
   useEffect(() => {
     if (daysLeft <= 0) {
       setStatusColor('green');
@@ -131,6 +88,41 @@ console.log("current user uid:", user.uid)
 
     setIsLoading(false);
   }, [daysLeft]);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      const q = query(
+        collection(db, "blood_requests"),
+        where("status", "==", "pending")
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const items:any[] = [];
+
+        for (const d of querySnapshot.docs) {
+          const requestData = d.data();
+          let bankName = "";
+
+          if (requestData.location) {
+            const bankRef = doc(db, "blood_banks", requestData.location);
+            const bankSnap = await getDoc(bankRef);
+            if (bankSnap.exists()) {
+              const data = bankSnap.data();
+              bankName = data.name || data.fullName || data.bloodBankName || data.bankName || "";
+            }
+          }
+
+          items.push({ id: d.id, ...requestData, locationName: bankName });
+        }
+
+        setUrgentRequests(items);
+      }
+    };
+
+    fetchRequests();
+  }, []);
 
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
@@ -251,7 +243,7 @@ console.log("current user uid:", user.uid)
             <Card>
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">Blood Requests </h3>
-                <Link to="/request">
+                <Link to="">
                   <Button size="sm" variant="outline">
                     View All
                   </Button>
@@ -270,7 +262,7 @@ console.log("current user uid:", user.uid)
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900">{request.bloodType} Blood Needed</h4>
-                            <p className="text-sm text-gray-600">{request.quantity} required</p>
+                            <p className="text-sm text-gray-600">{request.unitsNeeded} Pints required</p>
                           </div>
                         </div>
                         <Badge variant={urgencyBadge.variant}>
@@ -279,29 +271,24 @@ console.log("current user uid:", user.uid)
                         </Badge>
                       </div>
                       
-                      <p className="text-sm text-gray-600 mb-3">{request.description}</p>
+                      <p className="text-sm text-gray-600 mb-3">{request.medicalCondition}</p>
                       
                       <div className="flex justify-between items-center text-sm text-gray-500">
                         <div className="flex items-center">
                           <i className="ri-map-pin-line mr-1"></i>
-                          {request.location} 
-                          {/* • {request.distance} */}
+                          {request.locationName} 
                         </div>
                         <div className="flex items-center">
                           <i className="ri-time-line mr-1"></i>
-                          {request.timePosted}
+                          {request.createdAt?.toDate().toLocaleString()}
                         </div>
                       </div>
                       
                       <div className="mt-4 flex space-x-2">
-                        {/* <Button size="sm" className="flex-1">
-                          <i className="ri-heart-line mr-2"></i>
-                          Respond
-                        </Button> */}
-                        <Button size="sm" variant="outline">
+                        {/* <Button size="sm" variant="outline">
                           <i className="ri-share-line mr-2"></i>
                           Share
-                        </Button>
+                        </Button> */}
                       </div>
                     </div>
                   );

@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-// import { Link } from 'react-router-dom';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
-import { collection, getDocs, updateDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, Timestamp, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
-  // const [timeRange, setTimeRange] = useState('7d');
 
   const [globalStats, setGlobalStats] = useState({
     totalBloodBanks: 0,
@@ -50,7 +48,6 @@ export default function AdminDashboard() {
     setSelectedBankId(null);
     setSelectedAction(null);
 
-    // window.location.reload();
   };
 
   const loadBloodBanks = async () => {
@@ -102,11 +99,10 @@ export default function AdminDashboard() {
       const donations = donationsSnap.docs.map(d => d.data() as any);
       const completedDonations = donations.filter(d => d.status === 'completed').length;
 
-      const txSnap = await getDocs(collection(db, 'transactions'));
+      const transSnap = await getDocs(collection(db, "transactions"));
       let totalRevenue = 0;
-      txSnap.forEach(doc => {
-        const t = doc.data() as any;
-        if (t.status === 'paid') totalRevenue += t.amount || 0;
+      transSnap.forEach(d => {
+        totalRevenue += d.data().amount || 0;
       });
 
       setGlobalStats({
@@ -158,7 +154,6 @@ const loadRecentActivity = async () => {
       .map(d => {
         const data = d.data() as any;
 
-        // Pick the latest event timestamp
         const latestTime = [data.updatedAt, data.approvedAt, data.rejectedAt]
           .filter(Boolean)
           .map(t => (t?.toDate ? t.toDate() : new Date(t)))
@@ -190,7 +185,6 @@ const loadRecentActivity = async () => {
       })
       .filter(Boolean) as any[];
 
-    // Merge all activities & sort by latest timestamp
     const combined = [...reqs, ...dons, ...approvalsAndRejections]
       .sort((a, b) => {
         const aTime = a.timestamp?.toDate
@@ -215,37 +209,38 @@ const loadRecentActivity = async () => {
 };
 
   const loadTopBloodBanks = async () => {
-    try {
-      const banksSnap = await getDocs(collection(db, 'blood_banks'));
-      const donationsSnap = await getDocs(collection(db, 'donations'));
+    const banksSnap = await getDocs(collection(db, 'blood_banks'));
 
-      const donationsByBank: Record<string, number> = {};
-      donationsSnap.forEach(d => {
-        const data = d.data() as any;
-        if (data.facilityId) {
-          donationsByBank[data.facilityId] = (donationsByBank[data.facilityId] || 0) + 1;
-        }
+    const banks:any[] = [];
+
+    for (const bankDoc of banksSnap.docs) {
+      const bankId = bankDoc.id;
+      const bankData = bankDoc.data() as any;
+      const transQuery = query(collection(db, "transactions"), where("bloodBankId", "==", bankId));
+      const transSnap = await getDocs(transQuery);
+
+      let totalRevenue = 0;
+      transSnap.forEach(r => {
+        totalRevenue += r.data().amount || 0;
       });
 
-      const banks = banksSnap.docs
-      .map(d => {
-        const data = d.data() as any;
-        return {
-          id: d.id,
-          name: data.name || 'Unnamed',
-          status: data.status || 'pending',
-          donations: donationsByBank[d.id] || 0,
-          revenue: data.revenue || 0,
-          rating: data.rating || 4.5
-        };
-      })
-      .filter(b => b.status !== 'rejected'); 
+      // get donation count
+      const donationQuery = query(collection(db, "donations"), where("location", "==", bankId));
+      const donationSnap = await getDocs(donationQuery);
+      const donationCount = donationSnap.size;
 
-      const sorted = banks.sort((a, b) => b.donations - a.donations).slice(0, 5);
-      setTopBloodBanks(sorted);
-    } catch (e) {
-      console.error('Failed to load top blood banks', e);
+      banks.push({
+        id: bankId,
+        name: bankData.name,
+        revenue: totalRevenue,
+        donations: donationCount
+      });
     }
+
+    // sort rank
+    const sorted = banks.sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    setTopBloodBanks(sorted);
   };
 
   const loadInventory = async () => {
@@ -309,7 +304,6 @@ const loadRecentActivity = async () => {
         ["user", "donor", "superadmin"].includes(u.userType)
       );
 
-      // sort by createdAt (latest first)
       const sorted = filtered.sort((a, b) => {
         const aTime = a.createdAt?.toDate
           ? a.createdAt.toDate().getTime()
@@ -323,7 +317,7 @@ const loadRecentActivity = async () => {
           ? b.createdAt.getTime()
           : 0;
 
-        return bTime - aTime; // newest first
+        return bTime - aTime; 
       });
 
       setUsers(sorted);
@@ -364,7 +358,7 @@ const loadRecentActivity = async () => {
     setBloodBanks(items);
   });
 
-  return () => unsub(); // cleanup
+  return () => unsub(); 
 }, []);
 
   const handleApproveBloodBank = async (id: string) => {
@@ -376,7 +370,7 @@ const loadRecentActivity = async () => {
         approvedAt: now,
         status: 'approved',
         updatedAt: now,
-        rejectedAt: null // clear old rejection
+        rejectedAt: null 
       });
 
       await loadGlobalStats();
@@ -396,7 +390,7 @@ const loadRecentActivity = async () => {
         rejectedAt: now,
         status: 'rejected',
         updatedAt: now,
-        approvedAt: null // clear old approval
+        approvedAt: null 
       });
 
       await loadGlobalStats();
@@ -419,22 +413,6 @@ const loadRecentActivity = async () => {
               <h1 className="text-4xl font-bold mb-2">Super Admin Dashboard</h1>
               <p className="text-pink-100 text-lg">Global platform management and analytics</p>
             </div>
-            <div className="flex items-center space-x-4">
-              {/* <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/70 focus:ring-2 focus:ring-white/50 pr-8"
-              >
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="90d">Last 90 Days</option>
-              </select> */}
-              {/* <Button className="bg-white text-pink-600 hover:bg-gray-50">
-                <i className="ri-download-line mr-2"></i>
-                Export Report
-              </Button> */}
-            </div>
           </div>
         </div>
       </section>
@@ -445,9 +423,7 @@ const loadRecentActivity = async () => {
             {[
               { id: 'overview', label: 'Overview', icon: 'ri-dashboard-line' },
               { id: 'bloodbanks', label: 'Blood Banks', icon: 'ri-hospital-line' },
-              // { id: 'inventory', label: 'Global Inventory', icon: 'ri-drop-line' },
               { id: 'users', label: 'Users & Donors', icon: 'ri-user-line' },
-              // { id: 'analytics', label: 'Analytics', icon: 'ri-bar-chart-line' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -502,7 +478,7 @@ const loadRecentActivity = async () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-blue-100 text-sm">Total Revenue</p>
-                      <p className="text-3xl font-bold">${(globalStats.totalRevenue / 1000000).toFixed(1)}M</p>
+                      <p className="text-3xl font-bold">₦{globalStats.totalRevenue.toLocaleString()}</p>
                     </div>
                     <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                       <i className="ri-money-dollar-circle-line text-2xl"></i>
@@ -513,7 +489,7 @@ const loadRecentActivity = async () => {
                 <Card className="bg-gradient-to-r from-green-500 to-blue-500 text-white border-0">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-100 text-sm">Lives Saved</p>
+                      <p className="text-green-100 text-sm">Completed Donations</p>
                       <p className="text-3xl font-bold">{globalStats.completedDonations.toLocaleString()}</p>
                     </div>
                     <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -541,7 +517,6 @@ const loadRecentActivity = async () => {
                 </Card>
               )}
 
-              {/* Activity & Top */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
                   <h3 className="text-xl font-semibold text-gray-900 mb-6">Recent Activity</h3>
@@ -576,13 +551,6 @@ const loadRecentActivity = async () => {
                               : activity.action || 'Activity'}
                           </p>
                         </div>
-                        {/* <span className="text-xs text-gray-500">
-                          {activity.updatedAt?.toDate
-                            ? activity.updatedAt.toDate().toLocaleString()
-                            : activity.updatedAt instanceof Date
-                              ? activity.updatedAt.toLocaleString()
-                              : activity.time || ''}
-                        </span> */}
                       </div>
                     ))}
                   </div>
@@ -603,11 +571,7 @@ const loadRecentActivity = async () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-gray-900">${bank.revenue.toLocaleString()}</p>
-                          {/* <div className="flex items-center">
-                            <i className="ri-star-fill text-yellow-400 text-sm mr-1"></i>
-                            <span className="text-sm text-gray-600">{bank.rating}</span>
-                          </div> */}
+                          <p className="font-semibold text-gray-900">₦{bank.revenue.toLocaleString()}</p>
                         </div>
                       </div>
                     ))}

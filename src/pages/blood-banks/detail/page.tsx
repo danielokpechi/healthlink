@@ -1,53 +1,57 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Header from '../../../components/feature/Header';
 import Footer from '../../../components/feature/Footer';
 import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
+import { collection, getDocs, getDoc, doc } from "firebase/firestore";
+import { db } from "../../../firebase";
+import type { BloodTypeData } from '../../../firebase/types';
+import bloodBankImg from '../../../assets/images/blood-bank.jpg';
+import { useNavigate } from 'react-router-dom';
 
 export default function BloodBankDetail() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [selectedBloodType, setSelectedBloodType] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestQuantity, setRequestQuantity] = useState(1);
+  const [bloodBank, setBloodBank] = useState<any>(null)
 
-  // Mock data for blood bank detail
-  const bloodBank = {
-    id: 1,
-    name: 'Lagos University Teaching Hospital Blood Bank',
-    address: 'Idi-Araba, Surulere, Lagos State, Nigeria',
-    phone: '+234 803 123 4567',
-    email: 'bloodbank@luth.edu.ng',
-    hours: '24/7',
-    rating: 4.8,
-    reviews: 156,
-    description: 'Leading blood bank serving Lagos and surrounding areas with 24/7 emergency services and comprehensive blood donation programs.',
-    image: 'https://readdy.ai/api/search-image?query=Modern%20Nigerian%20medical%20blood%20bank%20facility%20exterior%20with%20professional%20healthcare%20environment%2C%20clean%20white%20building%20with%20medical%20cross%20symbol%20in%20Lagos%20Nigeria%2C%20people%20entering%20and%20leaving%2C%20bright%20daylight%2C%20contemporary%20architecture%2C%20welcoming%20entrance&width=800&height=400&seq=bloodbankdetail1-ng&orientation=landscape',
-    bloodTypes: [
-      { type: 'A+', quantity: 15, price: 15000, status: 'in-stock' },
-      { type: 'A-', quantity: 8, price: 18000, status: 'in-stock' },
-      { type: 'B+', quantity: 12, price: 16000, status: 'in-stock' },
-      { type: 'B-', quantity: 3, price: 20000, status: 'low-stock' },
-      { type: 'AB+', quantity: 6, price: 22000, status: 'in-stock' },
-      { type: 'AB-', quantity: 2, price: 25000, status: 'low-stock' },
-      { type: 'O+', quantity: 20, price: 14000, status: 'in-stock' },
-      { type: 'O-', quantity: 4, price: 24000, status: 'low-stock' }
-    ],
-    services: [
-      'Emergency Blood Supply',
-      'Scheduled Donations',
-      'Blood Type Testing',
-      'Platelet Donations',
-      'Plasma Collections'
-    ],
-    certifications: [
-      'NAFDAC Approved',
-      'Nigerian Medical Association Certified',
-      'ISO 9001 Certified'
-    ]
-  };
+  useEffect(() => {
+    const fetchBank = async () => {
+
+      // get document
+      const docRef = doc(db, "blood_banks", id as string);
+      const snap = await getDoc(docRef);
+
+      if (!snap.exists()) return;
+
+      const bank:any = { id: snap.id, ...snap.data() };
+
+      // get inventory
+      const invRef = collection(db, "blood_banks", snap.id, "inventory");
+      const invSnap = await getDocs(invRef);
+
+      const bloodTypes: BloodTypeData[] = [];
+      invSnap.forEach((d) => {
+        bloodTypes.push({
+          type: d.id,
+          quantity: d.data().quantity,
+          price: d.data().price,
+          status: d.data().available ? "in-stock" : "out-of-stock"
+        })
+      });
+
+      bank.bloodTypes = bloodTypes;
+
+      setBloodBank(bank);
+    };
+
+    fetchBank();
+  }, [id]);
 
   const getStockBadge = (quantity: number, status: string) => {
     if (status === 'out-of-stock' || quantity === 0) {
@@ -63,16 +67,18 @@ export default function BloodBankDetail() {
   };
 
   const handleRequestBlood = (bloodType: string) => {
-    setSelectedBloodType(bloodType);
-    setShowRequestModal(true);
+    navigate(`/request?bank=${bloodBank.id}&type=${bloodType}`);
   };
 
   const calculateTotal = () => {
-    const bloodTypeData = bloodBank.bloodTypes.find(bt => bt.type === selectedBloodType);
+    const bloodTypeData = bloodBank.bloodTypes.find(
+      (bt: BloodTypeData) => bt.type === selectedBloodType
+    );
     return bloodTypeData ? bloodTypeData.price * requestQuantity : 0;
   };
 
   const submitRequest = () => {
+
     console.log('Blood request submitted:', {
       bloodBank: bloodBank.name,
       bloodType: selectedBloodType,
@@ -84,12 +90,20 @@ export default function BloodBankDetail() {
     setRequestQuantity(1);
   };
 
+  if (!bloodBank) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       
       {/* Hero Section */}
-      <section className="relative bg-white">
+      <section className="relative bg-white mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div>
@@ -115,37 +129,29 @@ export default function BloodBankDetail() {
                 </div>
                 <div className="flex items-center text-gray-700">
                   <i className="ri-phone-line mr-3 text-pink-500"></i>
-                  <a href={`tel:${bloodBank.phone}`} className="hover:text-pink-500">
-                    {bloodBank.phone}
+                  <a href={`tel:${bloodBank.contactPhone}`} className="hover:text-pink-500">
+                    {bloodBank.contactPhone}
                   </a>
                 </div>
                 <div className="flex items-center text-gray-700">
-                  <i className="ri-time-line mr-3 text-pink-500"></i>
-                  <span>{bloodBank.hours}</span>
-                </div>
-                <div className="flex items-center text-gray-700">
-                  <i className="ri-star-fill mr-3 text-yellow-400"></i>
-                  <span>{bloodBank.rating} ({bloodBank.reviews} reviews)</span>
+                  <i className="ri-mail-line mr-3 text-pink-500"></i>
+                  <span>{bloodBank.contactEmail}</span>
                 </div>
               </div>
               
               <div className="flex space-x-4">
                 <Button size="lg">
                   <i className="ri-calendar-line mr-2"></i>
-                  Schedule Donation
-                </Button>
-                <Button variant="outline" size="lg">
-                  <i className="ri-phone-line mr-2"></i>
-                  Call Now
+                  <Link to="/donate">Schedule Donation</Link>
                 </Button>
               </div>
             </div>
             
             <div>
               <img
-                src={bloodBank.image}
+                src={bloodBankImg}
                 alt={bloodBank.name}
-                className="w-full h-80 object-cover object-top rounded-lg shadow-lg"
+                className="w-full h-80 object-fit object-top rounded-lg "
               />
             </div>
           </div>
@@ -177,7 +183,7 @@ export default function BloodBankDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {bloodBank.bloodTypes.map((bloodType) => {
+                  {bloodBank.bloodTypes.map((bloodType: BloodTypeData) => {
                     const stockBadge = getStockBadge(bloodType.quantity, bloodType.status);
                     return (
                       <tr key={bloodType.type} className="border-b border-gray-100 hover:bg-gray-50">
@@ -238,67 +244,6 @@ export default function BloodBankDetail() {
         </div>
       </section>
 
-      {/* Services & Certifications */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                <i className="ri-service-line mr-2 text-pink-500"></i>
-                Services Offered
-              </h3>
-              <ul className="space-y-3">
-                {bloodBank.services.map((service, index) => (
-                  <li key={index} className="flex items-center text-gray-700">
-                    <i className="ri-check-line mr-3 text-green-500"></i>
-                    {service}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-            
-            <Card>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                <i className="ri-award-line mr-2 text-pink-500"></i>
-                Certifications
-              </h3>
-              <ul className="space-y-3">
-                {bloodBank.certifications.map((cert, index) => (
-                  <li key={index} className="flex items-center text-gray-700">
-                    <i className="ri-shield-check-line mr-3 text-blue-500"></i>
-                    {cert}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Location Map */}
-      <section className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card>
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              <i className="ri-map-pin-line mr-2 text-pink-500"></i>
-              Location
-            </h3>
-            <div className="aspect-video w-full rounded-lg overflow-hidden">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1234567890123!2d-74.0059413!3d40.7127753!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQyJzQ2LjAiTiA3NMKwMDAnMjEuNCJX!5e0!3m2!1sen!2sus!4v1234567890123"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Blood Bank Location"
-              ></iframe>
-            </div>
-          </Card>
-        </div>
-      </section>
-
       {/* Request Modal */}
       {showRequestModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -320,7 +265,7 @@ export default function BloodBankDetail() {
                 <div className="text-sm text-pink-800">
                   <p><strong>Blood Bank:</strong> {bloodBank.name}</p>
                   <p><strong>Blood Type:</strong> {selectedBloodType}</p>
-                  <p><strong>Price per Pint:</strong> ₦{bloodBank.bloodTypes.find(bt => bt.type === selectedBloodType)?.price.toLocaleString()}</p>
+                  <p><strong>Price per Pint:</strong> ₦{bloodBank.bloodTypes.find((bt: BloodTypeData) => bt.type === selectedBloodType)?.price.toLocaleString()}</p>
                 </div>
               </div>
               

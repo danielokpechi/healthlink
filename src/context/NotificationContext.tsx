@@ -17,7 +17,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   const notify = (notif: Notification) => {
     setNotification(notif);
-    setTimeout(() => setNotification(null), 4000); // auto dismiss
+    setTimeout(() => setNotification(null), 4000); 
   };
 
   return (

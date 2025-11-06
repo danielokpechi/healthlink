@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-// import { Link } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
@@ -53,7 +52,6 @@ export default function DonateBlood() {
           const userData = userSnap.data();
           console.log("Fetched user details:", userData);
 
-          // Pre-fill form fields
           setFormData((prev) => ({
             ...prev,
             fullName: userData.fullName || "",
@@ -221,6 +219,7 @@ export default function DonateBlood() {
         ...formData,
         donorId: user.uid,
         donorEmail: user.email,
+        facilityId: formData.location,
         status: "pending", 
         createdAt: serverTimestamp(),
       });

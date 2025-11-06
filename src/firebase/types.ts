@@ -13,6 +13,7 @@ export type User = {
 export interface BloodBank {
   id: string;
   name: string;
+  licenseNumber: string;
   address: string;
   contactEmail: string;
   contactPhone: string;
@@ -84,3 +85,9 @@ export interface BloodRequest {
   status: 'pending' | 'completed' | 'rejected';
   medicalCondition: string;
 }
+ export interface  BloodTypeData {
+  type: string;
+  quantity: number;
+  price: number;
+  status: string;
+};

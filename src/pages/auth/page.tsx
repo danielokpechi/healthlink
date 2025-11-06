@@ -40,7 +40,7 @@ export default function Auth() {
     if (currentUser) {
       const user = JSON.parse(currentUser);
       if (user.type === 'donor') {
-        navigate('/profile');
+        navigate('/donor/dashboard');
       } else if (user.type === 'bloodbank') {
         navigate('/blood-banks/dashboard');
       }
@@ -143,7 +143,7 @@ export default function Auth() {
 
         // Redirect based on user type
         if (userData.userType === 'donor') {
-          navigate('/profile');
+          navigate('/donor/dashboard');
         } else if (userData.userType === 'bloodBank') {
           navigate('/blood-banks/dashboard');
         } else if (userData.userType === 'superAdmin') {
@@ -228,7 +228,6 @@ export default function Auth() {
               console.warn('Failed to persist created user to localStorage', e);
             }
 
-            // After signup, redirect to profile
             navigate('/profile');
           }
         } catch (err: any) {

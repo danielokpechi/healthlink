@@ -8,12 +8,15 @@ import Button from '../../../components/base/Button';
 import Card from '../../../components/base/Card';
 import Badge from '../../../components/base/Badge';
 import { db } from "../../../firebase"; 
-import { collection, query, where, getDoc, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDoc, setDoc, addDoc, getDocs, updateDoc, doc } from "firebase/firestore";
 import { useNotification } from '../../../context/NotificationContext';
 import type { Donation } from '../../../firebase/types';
 import { auth } from "../../../firebase";
+import { updatePassword } from "firebase/auth";
 import AddStockModal from '../AddStockModal';
 import { useInventory } from '../../../hooks/useInventory';
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+
 
 export default function BloodBankDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -22,6 +25,10 @@ export default function BloodBankDashboard() {
   const [selectedBloodBankId, setSelectedBloodBankId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { user } = useAuth();
   // const selectedBloodBankId = user?.bloodBankId;
@@ -34,20 +41,9 @@ export default function BloodBankDashboard() {
     updateQuantity, updatePrice, toggleAvailability, addStock
   } = useInventory(bankId);
 
-  const [revenueData] = useState({
-    totalRevenue: 5750000,
-    monthlyRevenue: 1234000,
-    weeklyRevenue: 325000,
-    completedTransactions: 89,
-    pendingPayments: 2
-  });
+  const [revenueData, setRevenueData] = useState<any>(null);
 
-  const [recentTransactions] = useState([
-    { id: 1, patient: 'Adebayo Johnson', amount: 28000, bloodType: 'O+', date: '2024-01-15', status: 'completed' },
-    { id: 2, patient: 'Fatima Ibrahim', amount: 18000, bloodType: 'A-', date: '2024-01-14', status: 'pending' },
-    { id: 3, patient: 'Chukwu Okoro', amount: 48000, bloodType: 'B+', date: '2024-01-13', status: 'completed' },
-    { id: 4, patient: 'Amina Yusuf', amount: 44000, bloodType: 'AB+', date: '2024-01-12', status: 'completed' }
-  ]);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
    useEffect(() => {
     const fetchUserData = async () => {
@@ -132,7 +128,95 @@ export default function BloodBankDashboard() {
       fetchDonations();
   }, [selectedBloodBankId]);
 
-  
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        if (!selectedBloodBankId) return;
+
+        const q = query(
+          collection(db, "blood_requests"),
+          where("location", "==", selectedBloodBankId)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        const fetchedRequests = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          
+          return {
+            id: doc.id,
+            patientName: data.patientName || '',
+            bloodType: data.bloodType || '',
+            quantity: Number(data.unitsNeeded) || 0,          
+            urgency: data.urgency || '',
+            totalCost: Number(data.totalAmount) || 0,         
+            status: data.status || 'pending',
+            notes: data.additionalNotes || '',
+            contactPhone: data.contactNumber || '',
+            requestTime: data.createdAt ? data.createdAt.toDate().toLocaleString() : ''
+          }
+        });
+
+        setRequests(fetchedRequests);
+      } catch(err) {
+        console.log("Error fetching requests", err)
+      }
+
+    }
+
+    fetchRequests();
+  }, [selectedBloodBankId]);
+
+  useEffect(() => {
+    if(!selectedBloodBankId) return;
+
+    const revRef = doc(db, "revenue", selectedBloodBankId);
+    getDoc(revRef).then(snap => {
+      if (snap.exists()) {
+        setRevenueData(snap.data());
+      }
+    });
+
+  }, [selectedBloodBankId, requests]);
+
+  useEffect(()=> {
+  if(!selectedBloodBankId) return;
+
+  const q = query(
+    collection(db, "transactions"),
+    where("bloodBankId", "==", selectedBloodBankId)
+  );
+
+  getDocs(q).then(snapshot=>{
+      const t = snapshot.docs.map(doc=> {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          patient: d.patientName,
+          bloodType: d.bloodType,
+          amount: Number(d.amount),
+          date: d.date?.toDate().toLocaleDateString(),
+          status: d.status
+        }
+      });
+      setTransactions(t);
+    })
+  }, [selectedBloodBankId, requests]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if(!selectedBloodBankId) return;
+
+      const bankRef = doc(db, "blood_banks", selectedBloodBankId);
+      const snap = await getDoc(bankRef);
+
+      if(snap.exists()) {
+        setProfile(snap.data());
+      }
+    };
+
+    fetchProfile();
+  }, [selectedBloodBankId]);
 
   const handleCompleteDonation = async (donationId: string) => {
     try {
@@ -157,30 +241,110 @@ export default function BloodBankDashboard() {
     }
   };
 
+  const handleCompleteRequest = async (requestId: string) => {
+    try {
+      const reqRef = doc(db, "blood_requests", requestId);
+      const reqSnap = await getDoc(reqRef);
 
-  // const updateQuantity = (type: string, newQuantity: number) => {
-  //   setBloodInventory(prev => 
-  //     prev.map(item => 
-  //       item.type === type ? { ...item, quantity: Math.max(0, newQuantity) } : item
-  //     )
-  //   );
-  // };
+      if(!reqSnap.exists()) return;
 
-  // const updatePrice = (type: string, newPrice: number) => {
-  //   setBloodInventory(prev => 
-  //     prev.map(item => 
-  //       item.type === type ? { ...item, price: Math.max(0, newPrice) } : item
-  //     )
-  //   );
-  // };
+      const requestData = reqSnap.data();
+      const amount = Number(requestData.totalAmount) || 0;
 
-  // const toggleAvailability = (type: string) => {
-  //   setBloodInventory(prev => 
-  //     prev.map(item => 
-  //       item.type === type ? { ...item, available: !item.available } : item
-  //     )
-  //   );
-  // };
+      // 1) Mark Request Completed
+      await updateDoc(reqRef, {
+        status: "completed",
+        completedAt: new Date()
+      });
+
+      // 2) Update revenue
+      const revRef = doc(db, "revenue", selectedBloodBankId!);
+      const revSnap = await getDoc(revRef);
+
+      if(revSnap.exists()) {
+        const revData = revSnap.data();
+        await updateDoc(revRef, {
+          totalRevenue: (revData.totalRevenue || 0) + amount,
+          monthlyRevenue: (revData.monthlyRevenue || 0) + amount,
+          weeklyRevenue: (revData.weeklyRevenue || 0) + amount,
+          completedTransactions: (revData.completedTransactions || 0) + 1
+        });
+      } else {
+        await setDoc(revRef, {
+          totalRevenue: amount,
+          monthlyRevenue: amount,
+          weeklyRevenue: amount,
+          completedTransactions: 1,
+          pendingPayments: 0
+        });
+      }
+
+      await addDoc(collection(db, "transactions"), {
+        bloodBankId: selectedBloodBankId,
+        facilityId: selectedBloodBankId,
+        amount,
+        patientName: requestData.patientName,
+        bloodType: requestData.bloodType,
+        date: new Date(),
+        status: "completed"
+      });
+
+      // Update UI state locally
+      setRequests(prev =>
+        prev.map(req =>
+          req.id === requestId ? { ...req, status: "completed" } : req
+        )
+      );
+
+      notify({ type: 'success', message: 'Blood request marked as completed & revenue updated!' });
+
+    } catch (error) {
+      console.error("Error completing request:", error);
+      notify({ type: 'error', message: 'Failed to complete blood request.' });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if(!selectedBloodBankId) return;
+
+    const ref = doc(db, "blood_banks", selectedBloodBankId);
+
+    await updateDoc(ref, {
+      name: profile.name || "",
+      licenseNumber: profile.licenseNumber,
+      address: profile.address || "",
+      contactEmail: profile.contactEmail || "",
+      contactPhone: profile.contactPhone || ""
+    });
+
+    notify({ type:'success', message:'Profile updated successfully!'});
+    console.log("clicked")
+  };
+
+  const handlePasswordUpdate = async () => {
+    try {
+      if(newPassword !== confirmPassword) {
+        notify({ type:'error', message:'Passwords do not match' });
+        return;
+      }
+
+      const user = auth.currentUser!;
+      const cred = EmailAuthProvider.credential(user.email!, currentPassword);
+
+      await reauthenticateWithCredential(user, cred);
+
+      await updatePassword(user, newPassword);
+
+      notify({ type:'success', message:'Password updated successfully!' });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+    } catch(e: any) {
+      console.log(e);
+      notify({ type:'error', message:e.message || 'Failed to update password.' });
+    }
+  };
 
   const getStockLevel = (
     quantity: number
@@ -238,14 +402,10 @@ export default function BloodBankDashboard() {
                 Blood Bank Dashboard
               </h1>
               <p className="text-pink-100 text-lg">
-                Welcome back, {user.organizationName || user.firstName}! Manage your inventory, requests, and revenue.
+                Welcome back {user.fullName || user.firstName}! Manage your inventory, requests, and revenue.
               </p>
             </div>
             <div className="flex space-x-3">
-              {/* <Button className="bg-white text-pink-600 hover:bg-gray-50">
-                <i className="ri-download-line mr-2"></i>
-                Export Report
-              </Button> */}
               <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30" onClick={()=>setShowAdd(true)}>
                 <i className="ri-add-line mr-2"></i>
                 Add Stock
@@ -340,7 +500,7 @@ export default function BloodBankDashboard() {
                     </div>
                     <div>
                       <p className="text-green-100 text-sm">Monthly Revenue</p>
-                      <p className="text-2xl font-bold">₦{revenueData.monthlyRevenue.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">₦{revenueData?.monthlyRevenue?.toLocaleString?.() || 0}</p>
                     </div>
                   </div>
                 </Card>
@@ -368,11 +528,6 @@ export default function BloodBankDashboard() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500">{request.requestTime}</p>
-                            {request.status === 'pending' && (
-                              <Button size="sm" className="mt-2">
-                                Review
-                              </Button>
-                            )}
                           </div>
                         </div>
                       );
@@ -394,11 +549,11 @@ export default function BloodBankDashboard() {
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold">₦{revenueData.totalRevenue.toLocaleString()}</p>
+                        <p className="text-2xl font-bold">₦{revenueData?.totalRevenue?.toLocaleString?.() || 0}</p>
                         <p className="text-sm text-green-700">Total Revenue</p>
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold">{revenueData.completedTransactions}</p>
+                        <p className="text-2xl font-bold">{revenueData?.completedTransactions || 0}</p>
                         <p className="text-sm text-blue-700">Completed Orders</p>
                       </div>
                     </div>
@@ -406,15 +561,15 @@ export default function BloodBankDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">This Month</span>
-                        <span className="font-semibold text-gray-900">₦{revenueData.monthlyRevenue.toLocaleString()}</span>
+                        <span className="font-semibold text-gray-900">₦{revenueData?.monthlyRevenue?.toLocaleString?.() || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">This Week</span>
-                        <span className="font-semibold text-gray-900">₦{revenueData.weeklyRevenue.toLocaleString()}</span>
+                        <span className="font-semibold text-gray-900">₦{revenueData?.weeklyRevenue?.toLocaleString() || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Pending Payments</span>
-                        <Badge variant="warning">{revenueData.pendingPayments}</Badge>
+                        <Badge variant="warning">{pendingRequests}</Badge>
                       </div>
                     </div>
                   </div>
@@ -438,10 +593,6 @@ export default function BloodBankDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">
                   Blood Inventory Management
                 </h2>
-                {/* <Button size="sm">
-                  <i className="ri-refresh-line mr-2"></i>
-                  Refresh
-                </Button> */}
               </div>
               
               <div className="overflow-x-auto">
@@ -453,7 +604,6 @@ export default function BloodBankDashboard() {
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Price per Pint</th>
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Stock Level</th>
                       <th className="text-left py-4 px-4 font-semibold text-gray-900">Availability</th>
-                      {/* <th className="text-left py-4 px-4 font-semibold text-gray-900">Actions</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -520,16 +670,6 @@ export default function BloodBankDashboard() {
                               />
                             </button>
                           </td>
-                          {/* <td className="py-4 px-4">
-                            <div className="flex space-x-2">
-                              <Button size="sm" variant="outline">
-                                <i className="ri-edit-line"></i>
-                              </Button>
-                              <Button size="sm" variant="ghost">
-                                <i className="ri-more-line"></i>
-                              </Button>
-                            </div>
-                          </td> */}
                         </tr>
                       );
                     })}
@@ -545,16 +685,6 @@ export default function BloodBankDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">
                   Blood Requests Management
                 </h2>
-                {/* <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <i className="ri-filter-line mr-2"></i>
-                    Filter
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <i className="ri-sort-asc mr-2"></i>
-                    Sort
-                  </Button>
-                </div> */}
               </div>
               
               <div className="space-y-4">
@@ -598,10 +728,6 @@ export default function BloodBankDashboard() {
                               <span className="font-medium">Phone:</span>
                               <span className="ml-1">{request.contactPhone}</span>
                             </div>
-                            <div>
-                              <span className="font-medium">Email:</span>
-                              <span className="ml-1">{request.contactEmail}</span>
-                            </div>
                           </div>
 
                           {request.notes && (
@@ -614,13 +740,13 @@ export default function BloodBankDashboard() {
                         
                         {request.status === 'pending' && (
                           <div className="flex space-x-2 ml-4">
-                            <Button size="sm" variant="outline">
+                            {/* <Button size="sm" variant="outline">
                               <i className="ri-close-line mr-2"></i>
                               Reject
-                            </Button>
-                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white">
+                            </Button> */}
+                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleCompleteRequest(request.id)}>
                               <i className="ri-check-line mr-2"></i>
-                              Accept
+                              Complete
                             </Button>
                           </div>
                         )}
@@ -668,9 +794,9 @@ export default function BloodBankDashboard() {
                         
                         {donation.status === 'pending' && (
                           <div className="flex space-x-2 ml-4">
-                            <Button size="sm" variant="outline">
+                            {/* <Button size="sm" variant="outline">
                               <i className="ri-close-line mr-2"></i> Reject
-                            </Button>
+                            </Button> */}
                             <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleCompleteDonation(donation.id)}>
                               <i className="ri-check-line mr-2"></i> Complete
                             </Button>
@@ -691,7 +817,7 @@ export default function BloodBankDashboard() {
                 <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                   <div className="text-center">
                     <p className="text-green-100 text-sm mb-2">Total Revenue</p>
-                    <p className="text-3xl font-bold">₦{revenueData.totalRevenue.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">₦{revenueData?.totalRevenue?.toLocaleString() || 0}</p>
                     <p className="text-green-100 text-xs mt-1">All time</p>
                   </div>
                 </Card>
@@ -699,7 +825,7 @@ export default function BloodBankDashboard() {
                 <Card className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
                   <div className="text-center">
                     <p className="text-blue-100 text-sm mb-2">Monthly Revenue</p>
-                    <p className="text-3xl font-bold">₦{revenueData.monthlyRevenue.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">₦{revenueData?.monthlyRevenue?.toLocaleString() || 0}</p>
                     <p className="text-blue-100 text-xs mt-1">This month</p>
                   </div>
                 </Card>
@@ -707,7 +833,7 @@ export default function BloodBankDashboard() {
                 <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
                   <div className="text-center">
                     <p className="text-purple-100 text-sm mb-2">Weekly Revenue</p>
-                    <p className="text-3xl font-bold">₦{revenueData.weeklyRevenue.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">₦{revenueData?.weeklyRevenue?.toLocaleString() || 0}</p>
                     <p className="text-purple-100 text-xs mt-1">This week</p>
                   </div>
                 </Card>
@@ -717,10 +843,6 @@ export default function BloodBankDashboard() {
               <Card>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-semibold text-gray-900">Recent Transactions</h3>
-                  <Button size="sm" variant="outline">
-                    <i className="ri-download-line mr-2"></i>
-                    Export
-                  </Button>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -732,11 +854,11 @@ export default function BloodBankDashboard() {
                         <th className="text-left py-3 px-4 font-semibold text-gray-900">Amount</th>
                         <th className="text-left py-3 px-4 font-semibold text-gray-900">Date</th>
                         <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Actions</th>
+                        {/* <th className="text-left py-3 px-4 font-semibold text-gray-900">Actions</th> */}
                       </tr>
                     </thead>
                     <tbody>
-                      {recentTransactions.map((transaction) => (
+                      {transactions.map((transaction) => (
                         <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="py-3 px-4 font-medium text-gray-900">{transaction.patient}</td>
                           <td className="py-3 px-4">
@@ -752,10 +874,10 @@ export default function BloodBankDashboard() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4">
-                            <Button size="sm" variant="outline">
+                            {/* <Button size="sm" variant="outline">
                               <i className="ri-eye-line mr-2"></i>
                               View
-                            </Button>
+                            </Button> */}
                           </td>
                         </tr>
                       ))}
@@ -778,7 +900,8 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="text"
-                        defaultValue="Lagos University Teaching Hospital Blood Bank"
+                        value={profile?.name || ""}  
+                        onChange={(e)=> setProfile({...profile, name: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
@@ -788,7 +911,8 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="text"
-                        defaultValue="NAFDAC-2024-001"
+                        value={profile?.licenseNumber ?? ""}
+                        onChange={(e)=> setProfile({...profile, licenseNumber: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
@@ -800,7 +924,8 @@ export default function BloodBankDashboard() {
                     </label>
                     <textarea
                       rows={3}
-                      defaultValue="Idi-Araba, Surulere, Lagos State, Nigeria"
+                      value={profile?.address || ""}  
+                      onChange={(e)=> setProfile({...profile, address: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                     />
                   </div>
@@ -812,7 +937,8 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="email"
-                        defaultValue="bloodbank@luth.edu.ng"
+                        value={profile?.contactEmail || ""}  
+                        onChange={(e)=> setProfile({...profile, contactEmail: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
@@ -822,17 +948,18 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="tel"
-                        defaultValue="+234 803 123 4567"
+                        value={profile?.contactPhone || ""}  
+                        onChange={(e)=> setProfile({...profile, contactPhone: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
                   </div>
 
                   <div className="flex justify-end space-x-4">
-                    <Button variant="outline">
+                    {/* <Button type="button" onClick={() => setProfile(profile)} variant="outline">
                       Cancel
-                    </Button>
-                    <Button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                    </Button> */}
+                    <Button type="button" className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600" onClick={handleSaveProfile}>
                       Save Changes
                     </Button>
                   </div>
@@ -848,6 +975,8 @@ export default function BloodBankDashboard() {
                     </label>
                     <input
                       type="password"
+                      value={currentPassword}
+                      onChange={(e)=>setCurrentPassword(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                     />
                   </div>
@@ -859,6 +988,8 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="password"
+                        value={newPassword}
+                        onChange={(e)=>setNewPassword(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
@@ -868,13 +999,15 @@ export default function BloodBankDashboard() {
                       </label>
                       <input
                         type="password"
+                        value={confirmPassword}
+                        onChange={(e)=>setConfirmPassword(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                       />
                     </div>
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                    <Button type='button' className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600" onClick={handlePasswordUpdate}>
                       Update Password
                     </Button>
                   </div>

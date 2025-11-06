@@ -8,8 +8,10 @@ import Card from '../../components/base/Card';
 // import Badge from '../../components/base/Badge';
 import { db } from "../../firebase";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { useNotification } from "../../context/NotificationContext";
 
 export default function RequestBlood() {
+  const { notify } = useNotification();
   
   const [bloodBanks, setBloodBanks] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -97,7 +99,7 @@ export default function RequestBlood() {
       createdAt: serverTimestamp()
     });
 
-    alert("Blood request submitted successfully!");
+    notify({ type: 'success', message: 'Blood request submitted successfully!' });
 
     setFormData({
       bloodType: '',
