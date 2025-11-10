@@ -6,6 +6,7 @@ interface CardProps {
   className?: string;
   padding?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'glass' | 'gradient';
+  onClick?: () => void;
 }
 
 export default function Card({ 

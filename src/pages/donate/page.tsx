@@ -4,10 +4,11 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
-import Badge from '../../components/base/Badge';
+// import Badge from '../../components/base/Badge';
 import { db, auth } from "../../firebase";
 import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { useNotification } from "../../context/NotificationContext";
+import { Link } from 'react-router-dom';
 
 export default function DonateBlood() {
   const { notify } = useNotification();
@@ -88,42 +89,6 @@ export default function DonateBlood() {
   }, []);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-  
-  const nearbyDonationCenters = [
-    {
-      id: 1,
-      name: 'Lagos University Teaching Hospital Blood Bank',
-      address: 'Idi-Araba, Surulere, Lagos State',
-      distance: '2.5 km',
-      hours: '8:00 AM - 6:00 PM',
-      phone: '+234 803 123 4567',
-      rating: 4.8,
-      nextAvailable: 'Today 2:00 PM',
-      incentives: ['Free health screening', 'Refreshments', 'Certificate']
-    },
-    {
-      id: 2,
-      name: 'National Hospital Abuja Blood Centre',
-      address: 'Central Business District, Abuja FCT',
-      distance: '1.8 km',
-      hours: '7:00 AM - 8:00 PM',
-      phone: '+234 809 876 5432',
-      rating: 4.9,
-      nextAvailable: 'Tomorrow 10:00 AM',
-      incentives: ['Free medical checkup', 'Donor card', 'Snacks']
-    },
-    {
-      id: 3,
-      name: 'University College Hospital Ibadan',
-      address: 'Queen Elizabeth Road, Ibadan, Oyo State',
-      distance: '3.2 km',
-      hours: '9:00 AM - 5:00 PM',
-      phone: '+234 805 456 7890',
-      rating: 4.6,
-      nextAvailable: 'Today 4:00 PM',
-      incentives: ['Health screening', 'Donor recognition', 'Light meal']
-    }
-  ];
 
   const donationBenefits = [
     {
@@ -652,7 +617,7 @@ export default function DonateBlood() {
       </section>
 
       {/* Donation Centers */}
-      <section className="py-24 bg-gradient-to-r from-gray-50/50 to-pink-50/30">
+      {/* <section className="py-24 bg-gradient-to-r from-gray-50/50 to-pink-50/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-5xl font-black text-gray-900 mb-6">
@@ -727,7 +692,7 @@ export default function DonateBlood() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Benefits Section */}
       <section className="py-24">
@@ -782,7 +747,7 @@ export default function DonateBlood() {
               </Button>
               <Button variant="glass" size="lg" className="w-full sm:w-auto text-white shadow-2xl text-xl px-12 py-6">
                 <i className="ri-question-line mr-4"></i>
-                Learn More
+                 <Link to="/about"> Learn More </Link>
               </Button>
             </div>
             
@@ -793,7 +758,7 @@ export default function DonateBlood() {
               </div>
               <div className="flex items-center glass px-6 py-3 rounded-2xl">
                 <i className="ri-heart-pulse-line mr-3 text-xl"></i>
-                <span className="font-medium">3 Lives Saved</span>
+                <span className="font-medium">Lives Saved</span>
               </div>
               <div className="flex items-center glass px-6 py-3 rounded-2xl">
                 <i className="ri-shield-check-line mr-3 text-xl"></i>

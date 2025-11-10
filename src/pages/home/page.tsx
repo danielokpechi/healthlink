@@ -5,80 +5,12 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
-import Badge from '../../components/base/Badge';
+// import Badge from '../../components/base/Badge';
 
 export default function Home() {
-  const [searchLocation, setSearchLocation] = useState('');
-  const [selectedResourceType, setSelectedResourceType] = useState('');
+  // const [searchLocation, setSearchLocation] = useState('');
+  // const [selectedResourceType, setSelectedResourceType] = useState('');
   const [activeFeature, setActiveFeature] = useState(0);
-  
-  const resourceTypes = [
-    { value: 'blood', label: 'Blood & Blood Products', icon: 'ri-drop-line' },
-    { value: 'plasma', label: 'Plasma', icon: 'ri-drop-line' },
-    { value: 'platelets', label: 'Platelets', icon: 'ri-drop-line' },
-    { value: 'oxygen', label: 'Oxygen Cylinders', icon: 'ri-lungs-line' },
-    { value: 'concentrators', label: 'Oxygen Concentrators', icon: 'ri-lungs-line' },
-    { value: 'medicines', label: 'Medicines & Vaccines', icon: 'ri-capsule-line' },
-    { value: 'ppe', label: 'PPE & Medical Kits', icon: 'ri-shield-cross-line' },
-    { value: 'lab', label: 'Lab Consumables', icon: 'ri-test-tube-line' }
-  ];
-  
-  const nearbyFacilities = [
-    {
-      id: 1,
-      name: 'Lagos University Teaching Hospital Medical Center',
-      address: 'Idi-Araba, Surulere, Lagos State',
-      distance: '2.5 km',
-      type: 'Multi-Resource Hospital',
-      availability: { 
-        blood: { 'A+': 15, 'O+': 8, 'B+': 12, 'AB+': 3 },
-        oxygen: { cylinders: 25, concentrators: 8 },
-        medicines: { vaccines: 150, antibiotics: 89 },
-        ppe: { masks: 500, gloves: 1200 }
-      },
-      status: 'Open',
-      phone: '+234 803 123 4567',
-      rating: 4.8,
-      verified: true,
-      specialties: ['Emergency Care', 'Blood Bank', 'Pharmacy', 'Lab Services']
-    },
-    {
-      id: 2,
-      name: 'National Hospital Abuja Medical Supply Center',
-      address: 'Central Business District, Abuja FCT',
-      distance: '1.8 km',
-      type: 'Government Medical Facility',
-      availability: { 
-        blood: { 'A+': 22, 'O+': 18, 'B+': 6, 'AB+': 9 },
-        oxygen: { cylinders: 40, concentrators: 15 },
-        medicines: { vaccines: 200, antibiotics: 120 },
-        ppe: { masks: 800, gloves: 2000 }
-      },
-      status: 'Open',
-      phone: '+234 809 876 5432',
-      rating: 4.9,
-      verified: true,
-      specialties: ['Critical Care', 'Respiratory Support', 'Vaccination Center']
-    },
-    {
-      id: 3,
-      name: 'University College Hospital Ibadan',
-      address: 'Queen Elizabeth Road, Ibadan, Oyo State',
-      distance: '3.2 km',
-      type: 'Teaching Hospital',
-      availability: { 
-        blood: { 'A+': 5, 'O+': 2, 'B+': 8, 'AB+': 1 },
-        oxygen: { cylinders: 12, concentrators: 3 },
-        medicines: { vaccines: 75, antibiotics: 45 },
-        ppe: { masks: 200, gloves: 400 }
-      },
-      status: 'Closing Soon',
-      phone: '+234 805 456 7890',
-      rating: 4.6,
-      verified: false,
-      specialties: ['Medical Training', 'Research', 'General Medicine']
-    }
-  ];
   
   const stats = [
     { label: 'Lives Saved', value: '12,847', icon: 'ri-heart-fill', color: 'from-pink-500 to-rose-500' },
@@ -204,123 +136,6 @@ export default function Home() {
         </div>
       </section>
       
-      {/* Quick Search */}
-      <section className="py-20 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-black text-gray-900 mb-6">
-              Find Healthcare Resources 
-              <span className="gradient-text"> Across Nigeria</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Search for blood, oxygen, medicines, PPE, and medical supplies with real-time availability updates
-            </p>
-          </div>
-          
-          <Card variant="glass" className="max-w-6xl mx-auto shadow-2xl border-0">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-4">Location</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Enter your city (Lagos, Abuja, Kano...)"
-                    value={searchLocation}
-                    onChange={(e) => setSearchLocation(e.target.value)}
-                    className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
-                  />
-                  <i className="ri-map-pin-line absolute left-5 top-5 text-pink-500 text-xl"></i>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-4">Resource Type</label>
-                <div className="relative">
-                  <select
-                    value={selectedResourceType}
-                    onChange={(e) => setSelectedResourceType(e.target.value)}
-                    className="w-full pl-14 pr-8 py-5 input-glass rounded-2xl text-base font-medium appearance-none"
-                  >
-                    <option value="">All resources</option>
-                    {resourceTypes.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                  <i className="ri-medical-mask-line absolute left-5 top-5 text-pink-500 text-xl"></i>
-                </div>
-              </div>
-              
-              <div className="flex items-end">
-                <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 shadow-2xl hover:shadow-pink-500/30" size="lg">
-                  <i className="ri-search-line mr-3"></i>
-                  Search Now
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-      
-      {/* Resource Categories */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-pink-50/30"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-black text-gray-900 mb-6">
-              Healthcare 
-              <span className="gradient-text"> Resource Categories</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Comprehensive medical resources available through our network of verified healthcare facilities
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { 
-                title: 'Blood & Plasma', 
-                description: 'Blood products, plasma, platelets for transfusions',
-                icon: 'ri-drop-line',
-                color: 'from-red-500 to-pink-500',
-                count: '2,847 units'
-              },
-              { 
-                title: 'Oxygen Support', 
-                description: 'Cylinders, concentrators, respiratory equipment',
-                icon: 'ri-lungs-line',
-                color: 'from-blue-500 to-cyan-500',
-                count: '1,234 units'
-              },
-              { 
-                title: 'Medicines & Vaccines', 
-                description: 'Prescription drugs, vaccines, medical treatments',
-                icon: 'ri-capsule-line',
-                color: 'from-green-500 to-emerald-500',
-                count: '15,678 items'
-              },
-              { 
-                title: 'PPE & Medical Kits', 
-                description: 'Protective equipment, surgical supplies, lab consumables',
-                icon: 'ri-shield-cross-line',
-                color: 'from-purple-500 to-pink-500',
-                count: '8,923 items'
-              }
-            ].map((category, index) => (
-              <Card key={index} variant="glass" className="text-center hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3">
-                <div className={`w-20 h-20 bg-gradient-to-r ${category.color} rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-glow`}>
-                  <i className={`${category.icon} text-white text-3xl`}></i>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">{category.title}</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">{category.description}</p>
-                <div className="glass px-4 py-2 rounded-full inline-block">
-                  <span className="text-sm font-bold text-pink-600">{category.count} available</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-      
       {/* Features Section */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-pink-50/30"></div>
@@ -383,7 +198,7 @@ export default function Home() {
       </section>
       
       {/* Nearby Facilities */}
-      <section className="py-24">
+      {/* <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-16">
             <div>
@@ -501,7 +316,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
       
       {/* Stats Section */}
       <section className="py-24 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 relative overflow-hidden">
@@ -519,7 +334,7 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
             {stats.map((stat, index) => (
               <div key={index} className="text-center group">
                 <div className={`w-24 h-24 bg-gradient-to-r ${stat.color} rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500 animate-glow`}>
@@ -559,15 +374,15 @@ export default function Home() {
                   Start Donating Today
                 </Button>
               </Link>
-              <Link to="/facilities">
+              <Link to="/blood-banks">
                 <Button variant="glass" size="lg" className="w-full sm:w-auto text-white shadow-2xl text-xl px-12 py-6">
                   <i className="ri-hospital-line mr-4"></i>
-                  Find Facilities
+                  Find Blood Banks
                 </Button>
               </Link>
             </div>
             
-            <div className="flex items-center justify-center space-x-12 text-gray-400">
+            <div className="flex flex-col sm:flex-row items-center justify-center sm:space-x-12 space-y-6 sm:space-y-0 text-gray-400">
               <div className="flex items-center glass px-6 py-3 rounded-2xl">
                 <i className="ri-shield-check-line mr-3 text-green-400 text-xl"></i>
                 <span className="font-medium">100% Secure</span>

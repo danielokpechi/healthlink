@@ -323,15 +323,16 @@ export default function RequestBlood() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-6">
-                <Button
+                {/* <Button
                   type="button"
                   disabled={!formData.bloodType || !formData.location}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 shadow-2xl hover:shadow-blue-500/30"
                   size="lg"
                 >
-                      Blood Banks
-                </Button>
-                
+                  <Link to="/blood-banks">
+                    Blood Banks
+                  </Link>       
+                </Button> */}
                 <Button
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 shadow-2xl hover:shadow-red-500/30"
@@ -347,7 +348,7 @@ export default function RequestBlood() {
       </section>
 
       {/* Emergency Contact */}
-      <section className="py-20">
+      {/* <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card variant="gradient" className="text-center shadow-2xl border-2 border-red-200">
             <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-glow">
@@ -372,7 +373,7 @@ export default function RequestBlood() {
             </div>
           </Card>
         </div>
-      </section>
+      </section> */}
 
       {/* How It Works */}
       <section className="py-24 bg-gradient-to-r from-gray-50/50 to-red-50/30">
