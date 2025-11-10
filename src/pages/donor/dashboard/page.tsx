@@ -156,33 +156,35 @@ export default function DonorDashboard() {
       
       {/* Dashboard Header */}
       <section className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">
-                 Welcome back {((user.fullName || user.firstName || user.displayName || '').toString()).replace(/\b\w/g, (c: string) => c.toUpperCase())} !
-              </h1>
-              <p className="text-pink-100 text-lg">
-                Thank you for being a life-saving donor. Your contributions make a real difference.
-              </p>
-            </div>
-            <div className="flex space-x-3">
-              <Link to="/donate">
-                <Button className="bg-white text-pink-600 hover:bg-gray-50">
-                  <i className="ri-gift-line mr-2"></i>
-                  Donate Now
-                </Button>
-              </Link>
-              <Link to="/profile">
-                <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30">
-                  <i className="ri-user-line mr-2"></i>
-                  Edit Profile
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+      <div className="text-center md:text-left">
+        <h1 className="text-4xl sm:text-5xl font-bold mb-3 leading-tight">
+          Welcome back {((user.fullName || user.firstName || user.displayName || '').toString()).replace(/\b\w/g, (c: string) => c.toUpperCase())} !
+        </h1>
+        <p className="text-pink-100 text-lg max-w-md mx-auto md:mx-0">
+          Thank you for being a life-saving donor. Your contributions make a real difference.
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-3 self-center md:self-start">
+        <Link to="/donate" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto bg-white text-pink-600 hover:bg-gray-50 px-6 py-4 text-lg">
+            <i className="ri-gift-line mr-2"></i>
+            Donate Now
+          </Button>
+        </Link>
+        <Link to="/profile" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto bg-white/20 border border-white/30 text-white hover:bg-white/30 px-6 py-4 text-lg">
+            <i className="ri-user-line mr-2"></i>
+            Edit Profile
+          </Button>
+        </Link>
+      </div>
+    </div>
+  </div>
+</section>
+
 
       {/* Stats Overview */}
       <section className="py-8">

@@ -424,7 +424,7 @@ export default function BloodBankDashboard() {
       {/* Navigation Tabs */}
       <section className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:flex md:space-x-8 gap-3 text-center">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: 'ri-dashboard-line' },
               { id: 'inventory', label: 'Inventory', icon: 'ri-drop-line' },
@@ -692,7 +692,7 @@ export default function BloodBankDashboard() {
                   const urgencyBadge = getUrgencyBadge(request.urgency);
                   return (
                     <Card key={request.id} className="border-l-4 border-l-pink-500">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-3">
                             <h3 className="font-semibold text-gray-900 text-lg">{request.patientName}</h3>

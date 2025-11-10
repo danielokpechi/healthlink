@@ -18,7 +18,7 @@ export default function Footer() {
 
   const resourceLinks = [
     { name: 'Blood Banks', href: '/blood-banks' },
-    { name: 'Medical Facilities', href: '/facilities' },
+    { name: 'Medical Facilities', href: '/blood-banks' },
     { name: 'Emergency Resources', href: '/emergency' },
     { name: 'Health Education', href: '/education' },
   ];

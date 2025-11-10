@@ -589,7 +589,7 @@ export default function DonateBlood() {
                     name="emergencyContact"
                     value={formData.emergencyContact}
                     onChange={handleInputChange}
-                    placeholder="Emergency contact name and phone number"
+                    placeholder="Emergency contact"
                     className="w-full pl-14 pr-4 py-5 input-glass rounded-2xl text-base font-medium placeholder-gray-400"
                   />
                   <i className="ri-contacts-line absolute left-5 top-5 text-pink-500 text-xl"></i>
@@ -599,7 +599,7 @@ export default function DonateBlood() {
               <div className="text-center">
                 <Button
                   type="submit"
-                  className="bg-gradient-to-r from-pink-500 to-red-500 shadow-2xl hover:shadow-pink-500/30"
+                  className="w-full sm:w-auto px-6 sm:px-12 py-5 sm:py-6 bg-gradient-to-r from-pink-500 to-red-500 shadow-2xl hover:shadow-pink-500/30 text-base sm:text-xl"
                   size="lg"
                   disabled={loading}
                 >
@@ -751,7 +751,7 @@ export default function DonateBlood() {
               </Button>
             </div>
             
-            <div className="flex items-center justify-center space-x-12 text-pink-100">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:space-x-12 text-pink-100">
               <div className="flex items-center glass px-6 py-3 rounded-2xl">
                 <i className="ri-time-line mr-3 text-xl"></i>
                 <span className="font-medium">30 Minutes</span>

@@ -423,7 +423,7 @@ const loadRecentActivity = async () => {
             {[
               { id: 'overview', label: 'Overview', icon: 'ri-dashboard-line' },
               { id: 'bloodbanks', label: 'Blood Banks', icon: 'ri-hospital-line' },
-              { id: 'users', label: 'Users & Donors', icon: 'ri-user-line' },
+              { id: 'users', label: 'Users', icon: 'ri-user-line' },
             ].map((tab) => (
               <button
                 key={tab.id}

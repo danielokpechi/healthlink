@@ -164,14 +164,8 @@ export default function Home() {
                   onClick={() => setActiveFeature(index)}
                 >
                   <div className="flex items-start space-x-6">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                      activeFeature === index 
-                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 shadow-lg animate-glow' 
-                        : 'glass'
-                    }`}>
-                      <i className={`${feature.icon} text-2xl ${
-                        activeFeature === index ? 'text-white' : 'text-gray-600'
-                      }`}></i>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 bg-gradient-to-r from-pink-500 to-purple-500 shadow-lg">
+                      <i className={`${feature.icon} text-white text-2xl`}></i>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
@@ -196,127 +190,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      
-      {/* Nearby Facilities */}
-      {/* <section className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-16">
-            <div>
-              <h2 className="text-5xl font-black text-gray-900 mb-4">Nearby Medical Facilities</h2>
-              <p className="text-xl text-gray-600">Verified healthcare facilities across Nigeria with real-time resource availability</p>
-            </div>
-            <Link to="/facilities">
-              <Button variant="glass" className="shadow-2xl">
-                View All Facilities
-                <i className="ri-arrow-right-line ml-3"></i>
-              </Button>
-            </Link>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {nearbyFacilities.map((facility) => (
-              <Card key={facility.id} variant="glass" className="hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3">
-                <div className="flex justify-between items-start mb-8">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-3">
-                      <h3 className="text-xl font-bold text-gray-900 mr-3">{facility.name}</h3>
-                      {facility.verified && (
-                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                          <i className="ri-check-line text-white text-sm"></i>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm flex items-center mb-2">
-                      <i className="ri-map-pin-line mr-2 text-pink-500"></i>
-                      {facility.address}
-                    </p>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-gray-500 text-sm font-medium">{facility.distance} away</p>
-                      <div className="flex items-center glass px-3 py-1 rounded-full">
-                        <i className="ri-star-fill text-yellow-400 text-sm mr-1"></i>
-                        <span className="text-sm font-bold text-gray-700">{facility.rating}</span>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">{facility.type}</Badge>
-                  </div>
-                  <Badge variant={facility.status === 'Open' ? 'success' : 'warning'} className="ml-3 font-bold">
-                    {facility.status}
-                  </Badge>
-                </div>
-                
-                <div className="mb-8">
-                  <h4 className="text-sm font-bold text-gray-700 mb-4">Available Resources</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 flex items-center">
-                        <i className="ri-drop-line mr-2 text-red-500"></i>
-                        Blood Types
-                      </span>
-                      <div className="flex space-x-1">
-                        {Object.entries(facility.availability.blood).slice(0, 3).map(([type, count]) => (
-                          <Badge key={type} variant={count < 5 ? 'danger' : 'success'} className="text-xs">
-                            {type}: {count}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 flex items-center">
-                        <i className="ri-lungs-line mr-2 text-blue-500"></i>
-                        Oxygen
-                      </span>
-                      <div className="flex space-x-1">
-                        <Badge variant="success" className="text-xs">
-                          Cylinders: {facility.availability.oxygen.cylinders}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 flex items-center">
-                        <i className="ri-capsule-line mr-2 text-green-500"></i>
-                        Medicines
-                      </span>
-                      <div className="flex space-x-1">
-                        <Badge variant="success" className="text-xs">
-                          Available: {facility.availability.medicines.vaccines}+
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <h4 className="text-sm font-bold text-gray-700 mb-3">Specialties</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {facility.specialties.slice(0, 2).map((specialty, index) => (
-                      <Badge key={index} variant="pink" className="text-xs">
-                        {specialty}
-                      </Badge>
-                    ))}
-                    {facility.specialties.length > 2 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{facility.specialties.length - 2} more
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <a href={`tel:${facility.phone}`} className="text-pink-500 hover:text-pink-600 text-sm font-bold cursor-pointer flex items-center glass px-4 py-2 rounded-xl transition-all duration-300">
-                    <i className="ri-phone-line mr-2"></i>
-                    Call Now
-                  </a>
-                  <Link to={`/facilities/${facility.id}`}>
-                    <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-500 shadow-lg">
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section> */}
       
       {/* Stats Section */}
       <section className="py-24 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 relative overflow-hidden">
