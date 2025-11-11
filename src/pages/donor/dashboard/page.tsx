@@ -160,7 +160,7 @@ export default function DonorDashboard() {
     <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
       <div className="text-center md:text-left">
         <h1 className="text-4xl sm:text-5xl font-bold mb-3 leading-tight">
-          Welcome back {((user.fullName || user.firstName || user.displayName || '').toString()).replace(/\b\w/g, (c: string) => c.toUpperCase())} !
+          Welcome back {((user.fullName || user.firstName || user.displayName || '').toString()).replace(/\b\w/g, (c: string) => c.toUpperCase())}!
         </h1>
         <p className="text-pink-100 text-lg max-w-md mx-auto md:mx-0">
           Thank you for being a life-saving donor. Your contributions make a real difference.

@@ -33,6 +33,33 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
+  async function makeSuperAdmin(id: string) {
+    try {
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, { userType: "superAdmin" });
+
+      setUsers(prev =>
+        prev.map(u => (u.id === id ? { ...u, userType: "superAdmin" } : u))
+      );
+    } catch (err) {
+      console.error("Failed to make super admin", err);
+    }
+  }
+
+  async function removeSuperAdmin(id: string) {
+    try {
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, { userType: "donor" });
+
+      // instantly reflect change in UI
+      setUsers(prev =>
+        prev.map(u => (u.id === id ? { ...u, userType: "donor" } : u))
+      );
+    } catch (err) {
+      console.error("Failed to remove super admin", err);
+    }
+  }
+
   const confirmAction = (id: string, action: "approve" | "reject") => {
     setSelectedBankId(id);
     setSelectedAction(action);
@@ -284,10 +311,7 @@ const loadRecentActivity = async () => {
       const items = snap.docs.map((d) => {
         const data = d.data() as any;
 
-        // normalize userType 
-        const role = (data.userType || "user")
-          .toLowerCase()
-          .replace(/[\s_-]/g, "");
+        const role = data.userType || "donor"; // keep exact case
 
         return {
           id: d.id,
@@ -300,24 +324,19 @@ const loadRecentActivity = async () => {
         };
       });
 
+      // Include your defined roles
       const filtered = items.filter((u) =>
-        ["user", "donor", "superadmin"].includes(u.userType)
+        ["user", "donor", "superAdmin"].includes(u.userType)
       );
 
       const sorted = filtered.sort((a, b) => {
         const aTime = a.createdAt?.toDate
           ? a.createdAt.toDate().getTime()
-          : a.createdAt instanceof Date
-          ? a.createdAt.getTime()
           : 0;
-
         const bTime = b.createdAt?.toDate
           ? b.createdAt.toDate().getTime()
-          : b.createdAt instanceof Date
-          ? b.createdAt.getTime()
           : 0;
-
-        return bTime - aTime; 
+        return bTime - aTime;
       });
 
       setUsers(sorted);
@@ -783,18 +802,16 @@ const loadRecentActivity = async () => {
                         className={`border-l-4 ${
                           u.userType === "donor"
                             ? "border-l-purple-500"
-                            : u.userType === "super_admin"
-                            ? "border-l-purple-500"
+                            : u.userType === "superAdmin"
+                            ? "border-l-pink-500"
                             : "border-l-blue-500"
                         }`}
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                        <div className="flex flex-wrap justify-between items-start gap-2">
+                          <div className="flex-1 min-w-[200px]">
                             <h4 className="text-lg font-semibold text-gray-900">{u.name}</h4>
                             <p className="text-sm text-gray-600">{u.email}</p>
-                            <p className="text-sm text-gray-600">
-                              {u.phone ? `${u.phone}` : "No phone"}
-                            </p>
+                            <p className="text-sm text-gray-600">{u.phone || "No phone"}</p>
                             <p className="text-sm text-gray-600">
                               Joined:{" "}
                               {u.createdAt?.toDate
@@ -807,13 +824,32 @@ const loadRecentActivity = async () => {
                             variant={
                               u.userType === "donor"
                                 ? "success"
-                                : u.userType === "superadmin"
+                                : u.userType === "superAdmin"
                                 ? "default"
                                 : "pink"
                             }
                           >
-                            {u.userType.replace("_", " ").toUpperCase()}
+                            {u.userType.toUpperCase()}
                           </Badge>
+
+                          {/* ONLY show if NOT already superadmin */}
+                          {u.userType !== "superAdmin" ? (
+                            <Button
+                              size="sm"
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                              onClick={() => makeSuperAdmin(u.id)}
+                            >
+                              Make Super Admin
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="bg-red-500 hover:bg-red-600 text-white"
+                              onClick={() => removeSuperAdmin(u.id)}
+                            >
+                              Remove Super Admin
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     ))}
