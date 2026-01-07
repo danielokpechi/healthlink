@@ -135,7 +135,7 @@ export default function Footer() {
         <div className="border-t border-white/10 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-gray-400 text-sm">
-              © 2024 HealthLink. All rights reserved. Saving lives across Nigeria.
+              © 2026 HealthLink. All rights reserved. Saving lives across Nigeria.
             </div>
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2 text-gray-400 text-sm">
