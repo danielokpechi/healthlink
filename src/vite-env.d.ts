@@ -2,8 +2,7 @@
 
 // Augment the global Window interface for GA4/gtag
 interface Window {
-  dataLayer: any[];  // or unknown[] for stricter typing
+  dataLayer: any[];  
 }
 
-// Optional: Stronger typing for gtag function
 declare function gtag(...args: any[]): void;

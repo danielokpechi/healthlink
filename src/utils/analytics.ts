@@ -1,5 +1,4 @@
-// analytics.ts
-export const GA_MEASUREMENT_ID = 'G-QYBR5DYCWZ';  // ← Your actual ID here!
+export const GA_MEASUREMENT_ID = 'G-QYBR5DYCWZ'; 
 
 export const initGA = () => {
   if (!GA_MEASUREMENT_ID) return;
@@ -17,7 +16,4 @@ export const initGA = () => {
   }
   gtag('js', new Date());
   gtag('config', GA_MEASUREMENT_ID, { send_page_view: true });  // Ensure page views are sent
-
-  // Optional: If using React Router for SPA route tracking
-  // history.listen(() => gtag('event', 'page_view', { page_path: window.location.pathname }));
 };
