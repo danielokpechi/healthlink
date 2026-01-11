@@ -1,0 +1,2 @@
+import{j as e}from"./index-C6PY5QRv.js";function i({children:r,className:o="",padding:a="md",variant:d="default"}){const s={sm:"p-4",md:"p-6",lg:"p-8"},t={default:"bg-white backdrop-blur-xl border border-white/20 shadow-xl hover:shadow-2xl",glass:"glass shadow-xl hover:shadow-2xl",gradient:"bg-gradient-to-br from-white/90 to-pink-50/50 backdrop-blur-xl border border-white/30 shadow-xl hover:shadow-2xl"};return e.jsx("div",{className:`rounded-3xl transition-all duration-500 card-hover ${t[d]} ${s[a]} ${o}`,children:r})}export{i as C};
+//# sourceMappingURL=Card-D3mEm6qj.js.map
